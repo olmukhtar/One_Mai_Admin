@@ -16,7 +16,8 @@ import {
   Target,
   UserPlus,
   Folder,
-  BookOpen
+  BookOpen,
+  Book
 } from "lucide-react";
 
 // Mock user role - in real app, this would come from context/auth
@@ -31,6 +32,7 @@ const mainItems = [
   { title: "Payout Requests", url: "/payout-requests", icon: Wallet, roles: ["Admin", "Account", "Customer Support"] },
   { title: "Resources", url: "/resources", icon: Folder, roles: ["Admin", "Account", "Front Desk", "Customer Support", "Marketing"] },
   { title: "Blog", url: "/blog", icon: BookOpen, roles: ["Admin", "Account", "Marketing"] },
+  { title: "Knowledge Base", url: "/knowledge-base", icon: Book, roles: ["Admin", "Account", "Customer Support"] },
   { title: "Create Admin", url: "/create-admin", icon: UserPlus, roles: ["Admin"] },
 ];
 

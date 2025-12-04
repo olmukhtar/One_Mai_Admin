@@ -32,6 +32,7 @@ import PayoutRequests from "./pages/PayoutRequests";
 import CreateAdmin from "./pages/CreateAdmin";
 import Resources from "./pages/Resources";
 import BlogManagement from "./pages/BlogManagement";
+import KnowledgeBase from "./pages/KnowledgeBase";
 
 const queryClient = new QueryClient();
 const AUTH_STORAGE_KEY = "admin_auth";
@@ -215,6 +216,14 @@ const App = () => (
             element={
               <RequireAuth>
                 <Support />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/knowledge-base"
+            element={
+              <RequireAuth>
+                <KnowledgeBase />
               </RequireAuth>
             }
           />
