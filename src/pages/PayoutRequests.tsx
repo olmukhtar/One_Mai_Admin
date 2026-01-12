@@ -27,14 +27,15 @@ type ApiResponse = {
 
 type UserRole = "admin" | "account" | "front_desk" | "customer_support";
 
-const AUTH_KEY = "admin_auth";
+import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
+
 const BASE = "https://api.joinonemai.com/api";
 const ENDPOINT = `${BASE}/admin/payout-requests`;
 const STATUS_ENDPOINT = `${BASE}/admin/payout-requests/status`;
 
 function useToken() {
   return useMemo(() => {
-    const raw = localStorage.getItem(AUTH_KEY) || sessionStorage.getItem(AUTH_KEY);
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
     if (!raw) return null;
     try {
       return JSON.parse(raw)?.token as string | null;
@@ -46,7 +47,7 @@ function useToken() {
 
 function useUserRole(): UserRole | null {
   return useMemo(() => {
-    const raw = localStorage.getItem(AUTH_KEY) || sessionStorage.getItem(AUTH_KEY);
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
     if (!raw) return null;
     try {
       const parsed = JSON.parse(raw);
@@ -113,8 +114,7 @@ export default function PayoutRequests() {
     const u = new URL(ENDPOINT);
     u.searchParams.set("page", String(page));
 
-    fetch(u.toString(), {
-      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+    apiFetch(u.toString(), {
       signal: ctl.signal,
     })
       .then(async (r) => {
@@ -123,7 +123,7 @@ export default function PayoutRequests() {
           try {
             const j = await r.json();
             if (j?.message) m = `Failed to load payout requests: ${j.message}`;
-          } catch {}
+          } catch { }
           throw new Error(m);
         }
         return r.json();
@@ -150,12 +150,10 @@ export default function PayoutRequests() {
     setUpdateError(null);
 
     try {
-      const response = await fetch(STATUS_ENDPOINT, {
+      const response = await apiFetch(STATUS_ENDPOINT, {
         method: "PATCH",
         headers: {
-          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
-          Accept: "application/json",
         },
         body: JSON.stringify({ id, status }),
       });
@@ -165,7 +163,7 @@ export default function PayoutRequests() {
         try {
           const errorData = await response.json();
           if (errorData?.message) errorMsg = errorData.message;
-        } catch {}
+        } catch { }
         throw new Error(errorMsg);
       }
 
@@ -307,33 +305,33 @@ export default function PayoutRequests() {
   // Action items - only include approve/reject for users who can update
   const actionItems = canUpdate
     ? [
-        {
-          label: "Approve",
-          onClick: (row: PayoutRequest) => openConfirmation(row, "completed"),
-          disabled: (row: PayoutRequest) => row.status !== "pending",
+      {
+        label: "Approve",
+        onClick: (row: PayoutRequest) => openConfirmation(row, "completed"),
+        disabled: (row: PayoutRequest) => row.status !== "pending",
+      },
+      {
+        label: "Reject",
+        onClick: (row: PayoutRequest) => openConfirmation(row, "failed"),
+        disabled: (row: PayoutRequest) => row.status !== "pending",
+      },
+      {
+        label: "View User",
+        onClick: (row: PayoutRequest) => {
+          const id = typeof row.user === "string" ? row.user : row.user?._id;
+          if (id) navigate(`/users/${id}`);
         },
-        {
-          label: "Reject",
-          onClick: (row: PayoutRequest) => openConfirmation(row, "failed"),
-          disabled: (row: PayoutRequest) => row.status !== "pending",
-        },
-        {
-          label: "View User",
-          onClick: (row: PayoutRequest) => {
-            const id = typeof row.user === "string" ? row.user : row.user?._id;
-            if (id) navigate(`/users/${id}`);
-          },
-        },
-      ]
+      },
+    ]
     : [
-        {
-          label: "View User",
-          onClick: (row: PayoutRequest) => {
-            const id = typeof row.user === "string" ? row.user : row.user?._id;
-            if (id) navigate(`/users/${id}`);
-          },
+      {
+        label: "View User",
+        onClick: (row: PayoutRequest) => {
+          const id = typeof row.user === "string" ? row.user : row.user?._id;
+          if (id) navigate(`/users/${id}`);
         },
-      ];
+      },
+    ];
 
   return (
     <AdminLayout>

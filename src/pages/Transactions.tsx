@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ShieldAlert } from "lucide-react";
 
+import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
+
 type Transaction = {
   _id: string;
   reference: string;
@@ -35,13 +37,12 @@ type TxnResponse = {
 
 type UserRole = "admin" | "account" | "front_desk" | "customer_support";
 
-const AUTH_KEY = "admin_auth";
 const BASE = "https://api.joinonemai.com/api";
 const URL_TXNS = `${BASE}/admin/transactions`;
 
 function useToken() {
   return useMemo(() => {
-    const raw = localStorage.getItem(AUTH_KEY) || sessionStorage.getItem(AUTH_KEY);
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
     if (!raw) return null;
     try {
       return JSON.parse(raw)?.token as string | null;
@@ -53,7 +54,7 @@ function useToken() {
 
 function useUserRole(): UserRole | null {
   return useMemo(() => {
-    const raw = localStorage.getItem(AUTH_KEY) || sessionStorage.getItem(AUTH_KEY);
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
     if (!raw) return null;
     try {
       const parsed = JSON.parse(raw);
@@ -110,8 +111,7 @@ export default function Transactions() {
     if (status !== "all") url.searchParams.set("status", status);
     if (type !== "all") url.searchParams.set("type", type);
 
-    fetch(url.toString(), {
-      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+    apiFetch(url.toString(), {
       signal: ctl.signal,
     })
       .then(async (r) => {
@@ -120,7 +120,7 @@ export default function Transactions() {
           try {
             const j = await r.json();
             if (j?.message) m = `Failed to load transactions: ${j.message}`;
-          } catch {}
+          } catch { }
           throw new Error(m);
         }
         return r.json();

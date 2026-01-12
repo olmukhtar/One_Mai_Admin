@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { Shield, ArrowLeft } from "lucide-react";
 
+import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
+
 type Group = {
   _id: string;
   name: string;
@@ -47,14 +49,13 @@ type GroupShowResponse = {
   payouts: any[];
 };
 
-const AUTH_KEY = "admin_auth";
 const BASE = "https://api.joinonemai.com/api";
 const SHOW_URL = (id: string) => `${BASE}/admin/groups/${id}`;
 
 function useToken() {
   return useMemo(() => {
     const raw =
-      localStorage.getItem(AUTH_KEY) || sessionStorage.getItem(AUTH_KEY);
+      localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
     if (!raw) return null;
     try {
       return JSON.parse(raw)?.token as string | null;
@@ -100,8 +101,7 @@ export default function GroupDetails() {
     setLoading(true);
     setErr(null);
 
-    fetch(SHOW_URL(id), {
-      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+    apiFetch(SHOW_URL(id), {
       signal: ctl.signal,
     })
       .then(async (r) => {
@@ -110,7 +110,7 @@ export default function GroupDetails() {
           try {
             const j = await r.json();
             if (j?.message) m = `Failed to load group: ${j.message}`;
-          } catch {}
+          } catch { }
           throw new Error(m);
         }
         return r.json();
@@ -190,12 +190,12 @@ export default function GroupDetails() {
                   <div>
                     {g.nextPayoutDate
                       ? new Date(g.nextPayoutDate).toLocaleString("en-NG", {
-                          year: "numeric",
-                          month: "short",
-                          day: "2-digit",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })
+                        year: "numeric",
+                        month: "short",
+                        day: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
                       : "—"}
                   </div>
                 </div>

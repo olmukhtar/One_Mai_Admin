@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Calendar, X, Send, Loader2 } from "lucide-react";
 
+import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
+
 type Message = {
   _id: string;
   sender: string;
@@ -37,13 +39,12 @@ type SupportsResponse = {
 
 type UserRole = "admin" | "account" | "front_desk" | "customer_support";
 
-const AUTH_KEY = "admin_auth";
 const BASE = "https://api.joinonemai.com/api";
 const SUPPORTS_URL = `${BASE}/admin/supports`;
 
 function useToken() {
   return useMemo(() => {
-    const raw = localStorage.getItem(AUTH_KEY) || sessionStorage.getItem(AUTH_KEY);
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
     if (!raw) return null;
     try {
       return JSON.parse(raw)?.token as string | null;
@@ -55,7 +56,7 @@ function useToken() {
 
 function useUserRole(): UserRole | null {
   return useMemo(() => {
-    const raw = localStorage.getItem(AUTH_KEY) || sessionStorage.getItem(AUTH_KEY);
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
     if (!raw) return null;
     try {
       const parsed = JSON.parse(raw);
@@ -76,7 +77,7 @@ const Support = () => {
   const [err, setErr] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchId, setSearchId] = useState("");
-  
+
   // Modal state
   const [selectedTicket, setSelectedTicket] = useState<Support | null>(null);
   const [replyMessage, setReplyMessage] = useState("");
@@ -104,11 +105,7 @@ const Support = () => {
     setLoading(true);
     setErr(null);
 
-    fetch(SUPPORTS_URL, {
-      headers: { 
-        Authorization: `Bearer ${token}`, 
-        Accept: "application/json" 
-      },
+    apiFetch(SUPPORTS_URL, {
       signal: ctl.signal,
     })
       .then(async (r) => {
@@ -117,7 +114,7 @@ const Support = () => {
           try {
             const j = await r.json();
             if (j?.message) m = `Failed to load support tickets: ${j.message}`;
-          } catch {}
+          } catch { }
           throw new Error(m);
         }
         return r.json();
@@ -158,12 +155,10 @@ const Support = () => {
     setReplyError(null);
 
     try {
-      const response = await fetch(`${SUPPORTS_URL}/${selectedTicket._id}/reply`, {
+      const response = await apiFetch(`${SUPPORTS_URL}/${selectedTicket._id}/reply`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
-          Accept: "application/json"
         },
         body: JSON.stringify({ message: replyMessage })
       });
@@ -173,24 +168,26 @@ const Support = () => {
         try {
           const errorData = await response.json();
           if (errorData?.message) errorMsg = errorData.message;
-        } catch {}
+        } catch { }
         throw new Error(errorMsg);
       }
 
       const result = await response.json();
-      
+
       // Update the ticket in the state
       if (data) {
-        const updatedSupports = data.supports.map(ticket => 
-          ticket._id === selectedTicket._id 
-            ? { ...ticket, messages: result.messages || [...ticket.messages, {
+        const updatedSupports = data.supports.map(ticket =>
+          ticket._id === selectedTicket._id
+            ? {
+              ...ticket, messages: result.messages || [...ticket.messages, {
                 _id: Date.now().toString(),
                 sender: "admin",
                 message: replyMessage,
                 attachments: [],
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
-              }]}
+              }]
+            }
             : ticket
         );
         setData({ ...data, supports: updatedSupports });
@@ -206,7 +203,7 @@ const Support = () => {
           }]
         } : null);
       }
-      
+
       setReplyMessage("");
     } catch (error: any) {
       setReplyError(error.message || "Failed to send reply");
@@ -224,12 +221,10 @@ const Support = () => {
     }
 
     try {
-      const response = await fetch(`${SUPPORTS_URL}/${selectedTicket._id}/status`, {
+      const response = await apiFetch(`${SUPPORTS_URL}/${selectedTicket._id}/status`, {
         method: "PATCH",
         headers: {
-          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
-          Accept: "application/json"
         },
         body: JSON.stringify({ status: newStatus })
       });
@@ -238,8 +233,8 @@ const Support = () => {
 
       // Update local state
       if (data) {
-        const updatedSupports = data.supports.map(ticket => 
-          ticket._id === selectedTicket._id 
+        const updatedSupports = data.supports.map(ticket =>
+          ticket._id === selectedTicket._id
             ? { ...ticket, status: newStatus }
             : ticket
         );
@@ -252,11 +247,11 @@ const Support = () => {
   };
 
   const columns = [
-    { 
-      key: "ticketId", 
+    {
+      key: "ticketId",
       label: "Ticket ID",
       render: (value: string, row: Support) => (
-        <button 
+        <button
           onClick={() => handleViewTicket(row)}
           className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
         >
@@ -264,16 +259,16 @@ const Support = () => {
         </button>
       )
     },
-    { 
-      key: "full_name", 
+    {
+      key: "full_name",
       label: "Name",
       render: (value: string) => (
         <span className="text-slate-700">{value}</span>
       )
     },
     { key: "email", label: "Email" },
-    { 
-      key: "description", 
+    {
+      key: "description",
       label: "Description",
       render: (value: string) => (
         <span className="text-slate-600 truncate max-w-xs block">
@@ -281,23 +276,23 @@ const Support = () => {
         </span>
       )
     },
-    { 
-      key: "priority", 
+    {
+      key: "priority",
       label: "Priority",
       render: (value: string) => <StatusBadge status={value} />
     },
-    { 
-      key: "status", 
+    {
+      key: "status",
       label: "Status",
       render: (value: string) => <StatusBadge status={value} />
     },
-    { 
-      key: "createdAt", 
+    {
+      key: "createdAt",
       label: "Date Created",
-      render: (value: string) => 
-        new Date(value).toLocaleString("en-NG", { 
-          year: "numeric", 
-          month: "short", 
+      render: (value: string) =>
+        new Date(value).toLocaleString("en-NG", {
+          year: "numeric",
+          month: "short",
           day: "2-digit",
           hour: "2-digit",
           minute: "2-digit"
@@ -307,48 +302,48 @@ const Support = () => {
 
   // Action items - only for users who can manage
   const actionItems = canRespond ? [
-    { 
-      label: "View Details", 
+    {
+      label: "View Details",
       onClick: (row: Support) => handleViewTicket(row)
     },
-    { 
-      label: "Mark as Resolved", 
+    {
+      label: "Mark as Resolved",
       onClick: (row: Support) => handleUpdateStatus("resolved")
     },
-    { 
-      label: "Mark as Closed", 
+    {
+      label: "Mark as Closed",
       onClick: (row: Support) => handleUpdateStatus("closed")
     },
   ] : [
-    { 
-      label: "View Details", 
+    {
+      label: "View Details",
       onClick: (row: Support) => handleViewTicket(row)
     }
   ];
 
   const filteredTickets = useMemo(() => {
     if (!data?.supports) return [];
-    
+
     let filtered = [...data.supports];
-    
+
     if (statusFilter !== "all") {
-      filtered = filtered.filter(ticket => 
+      filtered = filtered.filter(ticket =>
         ticket.status.toLowerCase() === statusFilter.toLowerCase()
       );
     }
-    
+
     if (searchId.trim()) {
-      filtered = filtered.filter(ticket => 
+      filtered = filtered.filter(ticket =>
         ticket.ticketId.toLowerCase().includes(searchId.toLowerCase())
       );
     }
-    
+
     return filtered;
   }, [data, statusFilter, searchId]);
 
   const exportToCSV = () => {
     if (!filteredTickets.length) return;
-    
+
     const headers = ["Ticket ID", "Name", "Email", "Description", "Priority", "Status", "Date Created"];
     const rows = filteredTickets.map(t => [
       t.ticketId,
@@ -359,11 +354,11 @@ const Support = () => {
       t.status,
       new Date(t.createdAt).toLocaleString()
     ]);
-    
-    const csv = [headers, ...rows].map(row => 
+
+    const csv = [headers, ...rows].map(row =>
       row.map(cell => `"${cell}"`).join(",")
     ).join("\n");
-    
+
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -376,7 +371,7 @@ const Support = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <PageHeader 
+        <PageHeader
           title="Support"
           breadcrumbs={[
             { label: "Dashboard", href: "/dashboard" },
@@ -427,7 +422,7 @@ const Support = () => {
               />
             </div>
           </div>
-          
+
           <div className="flex gap-2 ml-auto">
             <Button variant="outline" size="sm" onClick={exportToCSV}>
               <span className="text-primary">📄</span>
@@ -435,8 +430,8 @@ const Support = () => {
             </Button>
           </div>
         </div>
-        
-        <DataTable 
+
+        <DataTable
           columns={columns}
           data={loading ? [] : filteredTickets}
           actionItems={actionItems}
@@ -470,7 +465,7 @@ const Support = () => {
                   {selectedTicket.full_name} • {selectedTicket.email}
                 </p>
               </div>
-              <button 
+              <button
                 onClick={handleCloseModal}
                 className="text-slate-400 hover:text-slate-600"
               >
@@ -502,24 +497,24 @@ const Support = () => {
               {/* Status Update Buttons - Only show if user can respond/manage */}
               {canRespond && (
                 <div className="flex gap-2 mt-4">
-                  <Button 
-                    size="sm" 
+                  <Button
+                    size="sm"
                     variant="outline"
                     onClick={() => handleUpdateStatus("resolved")}
                     disabled={selectedTicket.status === "resolved"}
                   >
                     Mark Resolved
                   </Button>
-                  <Button 
-                    size="sm" 
+                  <Button
+                    size="sm"
                     variant="outline"
                     onClick={() => handleUpdateStatus("closed")}
                     disabled={selectedTicket.status === "closed"}
                   >
                     Close Ticket
                   </Button>
-                  <Button 
-                    size="sm" 
+                  <Button
+                    size="sm"
                     variant="outline"
                     onClick={() => handleUpdateStatus("open")}
                     disabled={selectedTicket.status === "open"}
@@ -533,8 +528,8 @@ const Support = () => {
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {selectedTicket.messages.map((msg, idx) => (
-                <div 
-                  key={msg._id} 
+                <div
+                  key={msg._id}
                   className={`flex ${msg.sender.includes("@") ? "justify-start" : "justify-end"}`}
                 >
                   <div className={`max-w-[70%] ${msg.sender.includes("@") ? "bg-slate-100" : "bg-blue-100"} rounded-lg p-4`}>
@@ -574,7 +569,7 @@ const Support = () => {
                     rows={3}
                     disabled={sendingReply}
                   />
-                  <Button 
+                  <Button
                     onClick={handleSendReply}
                     disabled={!replyMessage.trim() || sendingReply}
                     className="self-end"

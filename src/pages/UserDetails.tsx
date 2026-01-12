@@ -64,7 +64,8 @@ type ApiResponse = {
 
 type UserRole = "admin" | "account" | "front_desk" | "customer_support";
 
-const AUTH_STORAGE_KEY = "admin_auth";
+import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
+
 const BASE_URL = "https://api.joinonemai.com/api";
 const SHOW_URL = (id: string) => `${BASE_URL}/admin/users/${id}`;
 const APPROVE_AFFILIATE_URL = (id: string) => `${BASE_URL}/admin/users/${id}/approve-affiliate`;
@@ -140,7 +141,7 @@ export default function UserDetails() {
   // Determine where we came from based on explicit state passed during navigation
   const fromPage = (location.state as any)?.fromPage;
   const cameFromAffiliates = fromPage === 'affiliates';
-  
+
   // Also check if the user is an affiliate type to help determine context
   const isAffiliateUser = data?.user?.userType === "affiliate";
 
@@ -164,11 +165,8 @@ export default function UserDetails() {
     setLoading(true);
     setErr(null);
 
-    fetch(SHOW_URL(id), {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/json",
-      },
+    apiFetch(SHOW_URL(id), {
+      method: "GET",
       signal: controller.signal,
     })
       .then(async (res) => {
@@ -177,7 +175,7 @@ export default function UserDetails() {
           try {
             const j = await res.json();
             if (j?.message) msg = `Failed to load user: ${j.message}`;
-          } catch {}
+          } catch { }
           throw new Error(msg);
         }
         return res.json();
@@ -204,12 +202,10 @@ export default function UserDetails() {
     setApprovalError(null);
 
     try {
-      const response = await fetch(APPROVE_AFFILIATE_URL(id), {
+      const response = await apiFetch(APPROVE_AFFILIATE_URL(id), {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
-          Accept: "application/json",
         },
         body: JSON.stringify({ percentage }),
       });
@@ -219,7 +215,7 @@ export default function UserDetails() {
         try {
           const errorData = await response.json();
           if (errorData?.message) errorMsg = errorData.message;
-        } catch {}
+        } catch { }
         throw new Error(errorMsg);
       }
 
@@ -381,12 +377,12 @@ export default function UserDetails() {
                     <div>
                       {u.createdAt
                         ? new Date(u.createdAt).toLocaleString("en-NG", {
-                            year: "numeric",
-                            month: "short",
-                            day: "2-digit",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })
+                          year: "numeric",
+                          month: "short",
+                          day: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
                         : "—"}
                     </div>
                   </div>
@@ -429,12 +425,12 @@ export default function UserDetails() {
                     Last update{" "}
                     {u.updatedAt
                       ? new Date(u.updatedAt).toLocaleString("en-NG", {
-                          year: "numeric",
-                          month: "short",
-                          day: "2-digit",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })
+                        year: "numeric",
+                        month: "short",
+                        day: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
                       : "—"}
                   </div>
 
