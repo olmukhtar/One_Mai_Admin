@@ -27,8 +27,9 @@ import {
 import { Plus, Pencil, Trash2, HelpCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+import { apiFetch, AUTH_STORAGE_KEY, getAuthToken } from "@/lib/api";
+
 const BASE_URL = "https://api.joinonemai.com/api";
-const AUTH_STORAGE_KEY = "admin_auth";
 
 interface KnowledgeBaseItem {
     _id: string;
@@ -42,19 +43,6 @@ interface KnowledgeBaseItem {
 interface KnowledgeBaseResponse {
     knowledgeBaseItems: KnowledgeBaseItem[];
     message: string;
-}
-
-function getAuthToken(): string | null {
-    const raw =
-        localStorage.getItem(AUTH_STORAGE_KEY) ||
-        sessionStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) return null;
-    try {
-        const parsed = JSON.parse(raw);
-        return parsed?.token as string | null;
-    } catch {
-        return null;
-    }
 }
 
 export default function KnowledgeBase() {
@@ -81,12 +69,8 @@ export default function KnowledgeBase() {
 
         try {
             setLoading(true);
-            const response = await fetch(`${BASE_URL}/admin/knowledge-base`, {
+            const response = await apiFetch(`${BASE_URL}/admin/knowledge-base`, {
                 method: "GET",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    Accept: "application/json",
-                },
             });
 
             if (!response.ok) {
@@ -131,11 +115,10 @@ export default function KnowledgeBase() {
 
         try {
             setSubmitting(true);
-            const response = await fetch(`${BASE_URL}/admin/knowledge-base`, {
+            const response = await apiFetch(`${BASE_URL}/admin/knowledge-base`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify(formData),
             });
@@ -180,13 +163,12 @@ export default function KnowledgeBase() {
 
         try {
             setSubmitting(true);
-            const response = await fetch(
+            const response = await apiFetch(
                 `${BASE_URL}/admin/knowledge-base/${selectedItem._id}`,
                 {
                     method: "PUT",
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
                     },
                     body: JSON.stringify(formData),
                 }
@@ -223,13 +205,10 @@ export default function KnowledgeBase() {
 
         try {
             setSubmitting(true);
-            const response = await fetch(
+            const response = await apiFetch(
                 `${BASE_URL}/admin/knowledge-base/${selectedItem._id}`,
                 {
                     method: "DELETE",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
                 }
             );
 

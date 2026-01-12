@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Camera, Mail, Phone, Shield } from "lucide-react";
 
-const AUTH_STORAGE_KEY = "admin_auth";
+import { AUTH_STORAGE_KEY } from "@/lib/api";
 
 type SessionUser = {
   id?: string;

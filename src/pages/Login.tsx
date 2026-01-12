@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 
-const AUTH_STORAGE_KEY = "admin_auth";
+import { AUTH_STORAGE_KEY } from "@/lib/api";
 const LOGIN_URL = "https://api.joinonemai.com/api/admin/auth/login";
 
 export default function Login() {
@@ -57,7 +57,7 @@ export default function Login() {
           const json = await res.json();
           if (json?.message) msg = `Login failed: ${json.message}`;
           else if (json?.error) msg = `Login failed: ${json.error}`;
-        } catch {}
+        } catch { }
         setError(msg);
         setLoading(false);
         return;

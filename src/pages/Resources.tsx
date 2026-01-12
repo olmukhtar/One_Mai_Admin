@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Calendar, X, Plus, Loader2, Upload, Trash2, Edit } from "lucide-react";
 
+import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
+
 type Resource = {
   _id: string;
   title: string;
@@ -34,7 +36,6 @@ type ResourcesResponse = {
 
 type UserRole = "admin" | "account" | "front_desk" | "customer_support";
 
-const AUTH_KEY = "admin_auth";
 const BASE = "https://api.joinonemai.com/api";
 const RESOURCES_URL = `${BASE}/admin/fetch-resource`;
 const ADD_RESOURCE_URL = `${BASE}/admin/add-resource`;
@@ -43,7 +44,7 @@ const UPDATE_RESOURCE_URL = `${BASE}/admin/update-resource-status`;
 
 function useToken() {
   return useMemo(() => {
-    const raw = localStorage.getItem(AUTH_KEY) || sessionStorage.getItem(AUTH_KEY);
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
     if (!raw) return null;
     try {
       return JSON.parse(raw)?.token as string | null;
@@ -55,7 +56,7 @@ function useToken() {
 
 function useUserRole(): UserRole | null {
   return useMemo(() => {
-    const raw = localStorage.getItem(AUTH_KEY) || sessionStorage.getItem(AUTH_KEY);
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
     if (!raw) return null;
     try {
       const parsed = JSON.parse(raw);
@@ -77,12 +78,12 @@ const Resources = () => {
   const [typeFilter, setTypeFilter] = useState("all");
   const [visibilityFilter, setVisibilityFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
-  
+
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
-  
+
   // Form states
   const [formData, setFormData] = useState({
     title: "",
@@ -120,11 +121,7 @@ const Resources = () => {
     setLoading(true);
     setErr(null);
 
-    fetch(RESOURCES_URL, {
-      headers: { 
-        Authorization: `Bearer ${token}`, 
-        Accept: "application/json" 
-      },
+    apiFetch(RESOURCES_URL, {
       signal: ctl.signal,
     })
       .then(async (r) => {
@@ -133,7 +130,7 @@ const Resources = () => {
           try {
             const j = await r.json();
             if (j?.message) m = `Failed to load resources: ${j.message}`;
-          } catch {}
+          } catch { }
           throw new Error(m);
         }
         return r.json();
@@ -190,11 +187,11 @@ const Resources = () => {
       formDataToSend.append("description", formData.description);
       formDataToSend.append("type", formData.type);
       formDataToSend.append("visibility", formData.visibility);
-      
+
       // Parse tags
       const tagsArray = formData.tags.split(",").map(tag => tag.trim()).filter(Boolean);
       tagsArray.forEach(tag => formDataToSend.append("tags[]", tag));
-      
+
       if (thumbnailFile) {
         formDataToSend.append("thumbnail", thumbnailFile);
       }
@@ -202,11 +199,8 @@ const Resources = () => {
         formDataToSend.append("file", resourceFile);
       }
 
-      const response = await fetch(ADD_RESOURCE_URL, {
+      const response = await apiFetch(ADD_RESOURCE_URL, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
         body: formDataToSend
       });
 
@@ -215,7 +209,7 @@ const Resources = () => {
         try {
           const errorData = await response.json();
           if (errorData?.message) errorMsg = errorData.message;
-        } catch {}
+        } catch { }
         throw new Error(errorMsg);
       }
 
@@ -230,16 +224,12 @@ const Resources = () => {
 
   const handleDeleteResource = async (resourceId: string) => {
     if (!canManage) return;
-    
+
     if (!confirm("Are you sure you want to delete this resource?")) return;
 
     try {
-      const response = await fetch(`${DELETE_RESOURCE_URL}/${resourceId}`, {
+      const response = await apiFetch(`${DELETE_RESOURCE_URL}/${resourceId}`, {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/json"
-        }
       });
 
       if (!response.ok) throw new Error("Failed to delete resource");
@@ -258,12 +248,10 @@ const Resources = () => {
     if (!canManage) return;
 
     try {
-      const response = await fetch(`${UPDATE_RESOURCE_URL}/${resourceId}`, {
+      const response = await apiFetch(`${UPDATE_RESOURCE_URL}/${resourceId}`, {
         method: "PUT",
         headers: {
-          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
-          Accept: "application/json"
         },
         body: JSON.stringify({ is_active: isActive })
       });
@@ -280,11 +268,11 @@ const Resources = () => {
   };
 
   const columns = [
-    { 
-      key: "title", 
+    {
+      key: "title",
       label: "Title",
       render: (value: string, row: Resource) => (
-        <button 
+        <button
           onClick={() => handleViewResource(row)}
           className="font-medium text-blue-600 hover:text-blue-800 hover:underline text-left"
         >
@@ -292,13 +280,13 @@ const Resources = () => {
         </button>
       )
     },
-    { 
-      key: "type", 
+    {
+      key: "type",
       label: "Type",
       render: (value: string) => <StatusBadge status={value} />
     },
-    { 
-      key: "description", 
+    {
+      key: "description",
       label: "Description",
       render: (value: string) => (
         <span className="text-slate-600 truncate max-w-xs block">
@@ -306,32 +294,32 @@ const Resources = () => {
         </span>
       )
     },
-    { 
-      key: "visibility", 
+    {
+      key: "visibility",
       label: "Visibility",
       render: (value: string) => <StatusBadge status={value} />
     },
-    { 
-      key: "metrics", 
+    {
+      key: "metrics",
       label: "Views",
       render: (value: any) => (
         <span className="text-slate-700">{value?.views || 0}</span>
       )
     },
-    { 
-      key: "is_active", 
+    {
+      key: "is_active",
       label: "Status",
       render: (value: boolean) => (
         <StatusBadge status={value ? "active" : "inactive"} />
       )
     },
-    { 
-      key: "createdAt", 
+    {
+      key: "createdAt",
       label: "Date Created",
-      render: (value: string) => 
-        new Date(value).toLocaleString("en-NG", { 
-          year: "numeric", 
-          month: "short", 
+      render: (value: string) =>
+        new Date(value).toLocaleString("en-NG", {
+          year: "numeric",
+          month: "short",
           day: "2-digit",
           hour: "2-digit",
           minute: "2-digit"
@@ -340,56 +328,56 @@ const Resources = () => {
   ];
 
   const actionItems = canManage ? [
-    { 
-      label: "View Details", 
+    {
+      label: "View Details",
       onClick: (row: Resource) => handleViewResource(row)
     },
-    { 
-      label: "Toggle Status", 
+    {
+      label: "Toggle Status",
       onClick: (row: Resource) => handleUpdateStatus(row._id, !row.is_active)
     },
-    { 
-      label: "Delete", 
+    {
+      label: "Delete",
       onClick: (row: Resource) => handleDeleteResource(row._id),
       className: "text-red-600 hover:text-red-800"
     },
   ] : [
-    { 
-      label: "View Details", 
+    {
+      label: "View Details",
       onClick: (row: Resource) => handleViewResource(row)
     }
   ];
 
   const filteredResources = useMemo(() => {
     if (!data?.resources) return [];
-    
+
     let filtered = [...data.resources];
-    
+
     if (typeFilter !== "all") {
-      filtered = filtered.filter(resource => 
+      filtered = filtered.filter(resource =>
         resource.type.toLowerCase() === typeFilter.toLowerCase()
       );
     }
-    
+
     if (visibilityFilter !== "all") {
-      filtered = filtered.filter(resource => 
+      filtered = filtered.filter(resource =>
         resource.visibility.toLowerCase() === visibilityFilter.toLowerCase()
       );
     }
-    
+
     if (searchTerm.trim()) {
-      filtered = filtered.filter(resource => 
+      filtered = filtered.filter(resource =>
         resource.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         resource.description.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-    
+
     return filtered;
   }, [data, typeFilter, visibilityFilter, searchTerm]);
 
   const exportToCSV = () => {
     if (!filteredResources.length) return;
-    
+
     const headers = ["Title", "Type", "Description", "Visibility", "Views", "Downloads", "Status", "Date Created"];
     const rows = filteredResources.map(r => [
       r.title,
@@ -401,11 +389,11 @@ const Resources = () => {
       r.is_active ? "Active" : "Inactive",
       new Date(r.createdAt).toLocaleString()
     ]);
-    
-    const csv = [headers, ...rows].map(row => 
+
+    const csv = [headers, ...rows].map(row =>
       row.map(cell => `"${cell}"`).join(",")
     ).join("\n");
-    
+
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -418,7 +406,7 @@ const Resources = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <PageHeader 
+        <PageHeader
           title="Resources"
           breadcrumbs={[
             { label: "Dashboard", href: "/dashboard" },
@@ -442,7 +430,7 @@ const Resources = () => {
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
           <div className="flex items-center gap-2 flex-wrap">
-            
+
             <Select value={typeFilter} onValueChange={setTypeFilter}>
               <SelectTrigger className="w-32">
                 <SelectValue placeholder="Type" />
@@ -467,9 +455,9 @@ const Resources = () => {
                 <SelectItem value="affiliate-only">Affiliate Only</SelectItem>
               </SelectContent>
             </Select>
-           
+
           </div>
-          
+
           <div className="flex gap-2 ml-auto">
             {canManage && (
               <Button size="sm" onClick={() => setShowAddModal(true)}>
@@ -483,8 +471,8 @@ const Resources = () => {
             </Button>
           </div>
         </div>
-        
-        <DataTable 
+
+        <DataTable
           columns={columns}
           data={loading ? [] : filteredResources}
           actionItems={actionItems}
@@ -513,7 +501,7 @@ const Resources = () => {
                 <h2 className="text-xl font-semibold text-slate-900">Add New Resource</h2>
                 <p className="text-sm text-slate-500 mt-1">Create a new promotional resource</p>
               </div>
-              <button 
+              <button
                 onClick={handleCloseModals}
                 className="text-slate-400 hover:text-slate-600"
               >
@@ -675,7 +663,7 @@ const Resources = () => {
                   Created {new Date(selectedResource.createdAt).toLocaleDateString("en-NG")}
                 </p>
               </div>
-              <button 
+              <button
                 onClick={handleCloseModals}
                 className="text-slate-400 hover:text-slate-600"
               >
@@ -746,15 +734,15 @@ const Resources = () => {
 
               {canManage && (
                 <div className="flex gap-2">
-                  <Button 
-                    size="sm" 
+                  <Button
+                    size="sm"
                     variant="outline"
                     onClick={() => handleUpdateStatus(selectedResource._id, !selectedResource.is_active)}
                   >
                     {selectedResource.is_active ? "Deactivate" : "Activate"}
                   </Button>
-                  <Button 
-                    size="sm" 
+                  <Button
+                    size="sm"
                     variant="outline"
                     onClick={() => handleDeleteResource(selectedResource._id)}
                     className="text-red-600 hover:text-red-800"

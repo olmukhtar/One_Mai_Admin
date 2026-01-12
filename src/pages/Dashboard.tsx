@@ -46,7 +46,8 @@ type StatsResponse = {
 
 type UserRole = "admin" | "account" | "front_desk" | "customer_support";
 
-const AUTH_STORAGE_KEY = "admin_auth";
+import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
+
 const BASE_URL = "https://api.joinonemai.com/api";
 const STATS_URL = `${BASE_URL}/admin/dashboard/stats`;
 
@@ -95,54 +96,54 @@ function formatEuro(n: number) {
 function KPIs({ data, role }: { data: StatsResponse["stats"] | null; role: UserRole | null }) {
   const canSeeFinancials = role === "admin" || role === "account";
   const canSeePendingPayouts = role === "admin" || role === "account";
-  
+
   const items = [
-    { 
-      title: "Users", 
-      value: data ? data.totalUsers.toLocaleString() : "—", 
+    {
+      title: "Users",
+      value: data ? data.totalUsers.toLocaleString() : "—",
       icon: Users,
       visible: true
     },
-    { 
-      title: "Groups", 
-      value: data ? data.totalGroups.toLocaleString() : "—", 
+    {
+      title: "Groups",
+      value: data ? data.totalGroups.toLocaleString() : "—",
       icon: UserCheck,
       visible: true
     },
-    { 
-      title: "Active Groups", 
-      value: data ? data.activeGroups.toLocaleString() : "—", 
+    {
+      title: "Active Groups",
+      value: data ? data.activeGroups.toLocaleString() : "—",
       icon: CreditCard,
       visible: true
     },
-    { 
-      title: "Pending Payouts", 
-      value: data ? data.pendingPayoutRequests.toLocaleString() : "—", 
+    {
+      title: "Pending Payouts",
+      value: data ? data.pendingPayoutRequests.toLocaleString() : "—",
       icon: Wallet,
       visible: canSeePendingPayouts
     },
-    { 
-      title: "Txn Value", 
-      value: data ? formatEuro(data.totalTransactionValue) : "—", 
+    {
+      title: "Txn Value",
+      value: data ? formatEuro(data.totalTransactionValue) : "—",
       icon: ArrowUpRight,
       visible: canSeeFinancials
     },
-    { 
-      title: "Revenue", 
-      value: data ? formatEuro(data.platformRevenue) : "—", 
+    {
+      title: "Revenue",
+      value: data ? formatEuro(data.platformRevenue) : "—",
       icon: ArrowUpRight,
       visible: canSeeFinancials
     },
   ].filter(item => item.visible);
 
   // Dynamic grid based on number of visible items
-  const gridCols = items.length <= 3 
-    ? "sm:grid-cols-2 lg:grid-cols-3" 
-    : items.length === 4 
-    ? "sm:grid-cols-2 lg:grid-cols-4" 
-    : items.length === 5
-    ? "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
-    : "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6";
+  const gridCols = items.length <= 3
+    ? "sm:grid-cols-2 lg:grid-cols-3"
+    : items.length === 4
+      ? "sm:grid-cols-2 lg:grid-cols-4"
+      : items.length === 5
+        ? "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
+        : "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6";
 
   return (
     <div className={`grid gap-4 ${gridCols}`}>
@@ -227,8 +228,8 @@ function TransactionsTable({
                           (t.status === "completed"
                             ? "bg-emerald-50 text-emerald-700"
                             : t.status === "pending"
-                            ? "bg-amber-50 text-amber-700"
-                            : "bg-rose-50 text-rose-700")
+                              ? "bg-amber-50 text-amber-700"
+                              : "bg-rose-50 text-rose-700")
                         }
                       >
                         {t.status}
@@ -425,12 +426,8 @@ export default function Dashboard() {
     setLoading(true);
     setErr(null);
 
-    fetch(STATS_URL, {
+    apiFetch(STATS_URL, {
       method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/json",
-      },
       signal: abort.signal,
     })
       .then(async (res) => {
@@ -439,7 +436,7 @@ export default function Dashboard() {
           try {
             const j = await res.json();
             if (j?.message) msg = `Failed to load stats: ${j.message}`;
-          } catch {}
+          } catch { }
           throw new Error(msg);
         }
         return res.json();
@@ -478,8 +475,8 @@ export default function Dashboard() {
           <div className="grid gap-4 lg:grid-cols-3">
             {/* Transactions table takes up 2 columns when visible */}
             <div className="lg:col-span-2">
-              <TransactionsTable 
-                rows={data?.recentTransactions ?? []} 
+              <TransactionsTable
+                rows={data?.recentTransactions ?? []}
                 loading={loading}
                 role={role}
               />
@@ -498,8 +495,8 @@ export default function Dashboard() {
 
         {/* Chart section - only shows for admin and account */}
         {canViewChart && (
-          <ContributionsChart 
-            rows={data?.recentTransactions ?? []} 
+          <ContributionsChart
+            rows={data?.recentTransactions ?? []}
             role={role}
           />
         )}

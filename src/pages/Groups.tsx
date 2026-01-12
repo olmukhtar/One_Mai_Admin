@@ -34,14 +34,15 @@ type GroupsResponse = {
   totalGroups: number;
 };
 
-const AUTH_KEY = "admin_auth";
+import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
+
 const BASE = "https://api.joinonemai.com/api";
 const GROUPS_URL = `${BASE}/admin/groups`;
 
 function useToken() {
   return useMemo(() => {
     const raw =
-      localStorage.getItem(AUTH_KEY) || sessionStorage.getItem(AUTH_KEY);
+      localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
     if (!raw) return null;
     try {
       return JSON.parse(raw)?.token as string | null;
@@ -86,8 +87,7 @@ export default function Groups() {
     const url = new URL(GROUPS_URL);
     url.searchParams.set("page", String(page));
 
-    fetch(url.toString(), {
-      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+    apiFetch(url.toString(), {
       signal: ctl.signal,
     })
       .then(async (r) => {
@@ -96,7 +96,7 @@ export default function Groups() {
           try {
             const j = await r.json();
             if (j?.message) m = `Failed to load groups: ${j.message}`;
-          } catch {}
+          } catch { }
           throw new Error(m);
         }
         return r.json();
@@ -119,7 +119,7 @@ export default function Groups() {
   const filteredRows = useMemo(() => {
     if (!searchQuery.trim()) return rows;
     const query = searchQuery.toLowerCase();
-    return rows.filter((g) => 
+    return rows.filter((g) =>
       g.name?.toLowerCase().includes(query) ||
       g.admin?.email?.toLowerCase().includes(query) ||
       g.inviteCode?.toLowerCase().includes(query) ||
@@ -131,7 +131,7 @@ export default function Groups() {
   const pageNumbers = useMemo(() => {
     const pages: (number | string)[] = [];
     const maxVisible = 7; // Maximum number of page buttons to show
-    
+
     if (totalPages <= maxVisible) {
       // Show all pages if total is small
       for (let i = 1; i <= totalPages; i++) {
@@ -140,27 +140,27 @@ export default function Groups() {
     } else {
       // Always show first page
       pages.push(1);
-      
+
       if (currentPage > 3) {
         pages.push("...");
       }
-      
+
       // Show pages around current page
       const start = Math.max(2, currentPage - 1);
       const end = Math.min(totalPages - 1, currentPage + 1);
-      
+
       for (let i = start; i <= end; i++) {
         pages.push(i);
       }
-      
+
       if (currentPage < totalPages - 2) {
         pages.push("...");
       }
-      
+
       // Always show last page
       pages.push(totalPages);
     }
-    
+
     return pages;
   }, [currentPage, totalPages]);
 
@@ -247,10 +247,10 @@ export default function Groups() {
                         <td className="py-2 pr-4">
                           {g.nextPayoutDate
                             ? new Date(g.nextPayoutDate).toLocaleDateString("en-NG", {
-                                year: "numeric",
-                                month: "short",
-                                day: "2-digit",
-                              })
+                              year: "numeric",
+                              month: "short",
+                              day: "2-digit",
+                            })
                             : "—"}
                         </td>
                         <td className="py-2 pr-4"><StatusBadge status={g.status} /></td>
@@ -280,7 +280,7 @@ export default function Groups() {
                 >
                   Previous
                 </Button>
-                
+
                 {pageNumbers.map((pageNum, idx) => {
                   if (pageNum === "...") {
                     return (
@@ -289,7 +289,7 @@ export default function Groups() {
                       </span>
                     );
                   }
-                  
+
                   return (
                     <Button
                       key={pageNum}
@@ -303,7 +303,7 @@ export default function Groups() {
                     </Button>
                   );
                 })}
-                
+
                 <Button
                   variant="outline"
                   size="sm"

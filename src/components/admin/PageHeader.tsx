@@ -8,14 +8,16 @@ interface PageHeaderProps {
   showSearch?: boolean;
   searchPlaceholder?: string;
   showExportButtons?: boolean;
+  rightSlot?: React.ReactNode;
 }
 
-export function PageHeader({ 
-  title, 
-  breadcrumbs = [], 
+export function PageHeader({
+  title,
+  breadcrumbs = [],
   showSearch = false,
   searchPlaceholder = "Search...",
-  showExportButtons = false 
+  showExportButtons = false,
+  rightSlot
 }: PageHeaderProps) {
   return (
     <div className="space-y-4">
@@ -39,13 +41,16 @@ export function PageHeader({
         </nav>
       )}
 
-      {/* Title */}
-      <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
+      {/* Title and Right Slot */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
+        {rightSlot}
+      </div>
 
       {/* Search and Export */}
       {(showSearch || showExportButtons) && (
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-     
+
 
           {showExportButtons && (
             <div className="flex gap-2">

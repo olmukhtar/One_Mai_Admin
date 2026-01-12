@@ -31,7 +31,8 @@ type UsersResponse = {
 
 type UserRole = "admin" | "account" | "frontDesk" | "customerSupport";
 
-const AUTH_STORAGE_KEY = "admin_auth";
+import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
+
 const BASE_URL = "https://api.joinonemai.com/api";
 const USERS_URL = `${BASE_URL}/admin/users`;
 
@@ -103,12 +104,8 @@ export default function Users() {
     url.searchParams.set("page", String(pageNum));
     url.searchParams.set("type", "normal");
 
-    fetch(url.toString(), {
+    apiFetch(url.toString(), {
       method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/json",
-      },
       signal: controller.signal,
     })
       .then(async (res) => {
@@ -117,7 +114,7 @@ export default function Users() {
           try {
             const j = await res.json();
             if (j?.message) msg = `Failed to load users: ${j.message}`;
-          } catch {}
+          } catch { }
           throw new Error(msg);
         }
         return res.json();
@@ -164,17 +161,17 @@ export default function Users() {
   // Real-time client-side filtering
   const filteredUsers = useMemo(() => {
     if (!allUsers || allUsers.length === 0) return [];
-    
+
     const query = searchQuery.toLowerCase().trim();
     if (!query) return allUsers;
-    
+
     return allUsers.filter((user) => {
       const name = nameOf(user).toLowerCase();
       const email = (user.email || "").toLowerCase();
       const phone = (user.phoneNumber || "").toLowerCase();
       const userType = (user.userType || "").toLowerCase();
       const status = (user.accountStatus || "").toLowerCase();
-      
+
       return (
         name.includes(query) ||
         email.includes(query) ||
@@ -275,10 +272,10 @@ export default function Users() {
         render: (_: any, row: User) =>
           row.createdAt
             ? new Date(row.createdAt).toLocaleDateString("en-NG", {
-                year: "numeric",
-                month: "short",
-                day: "2-digit",
-              })
+              year: "numeric",
+              month: "short",
+              day: "2-digit",
+            })
             : "—",
       },
     ];

@@ -14,12 +14,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, FileText, Calendar, Eye } from "lucide-react";
+import { Plus, Pencil, Trash2, FileText, Calendar, Eye, Share2, Bold, Italic, Link as LinkIcon, Heading1, Heading2, List, Quote, Type } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
 
 const BASE_URL = "https://api.joinonemai.com/api";
 const IMAGE_BASE_URL = "https://api.joinonemai.com";
-const AUTH_STORAGE_KEY = "admin_auth";
 
 interface BlogPost {
   _id: string;
@@ -37,18 +38,7 @@ interface BlogResponse {
   message: string;
 }
 
-function getAuthToken(): string | null {
-  const raw =
-    localStorage.getItem(AUTH_STORAGE_KEY) ||
-    sessionStorage.getItem(AUTH_STORAGE_KEY);
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw);
-    return parsed?.token as string | null;
-  } catch {
-    return null;
-  }
-}
+
 
 export default function BlogManagement() {
   const { toast } = useToast();
@@ -62,7 +52,7 @@ export default function BlogManagement() {
   // Form state
   const [formData, setFormData] = useState({
     title: "",
-    content: "",
+    contentBlocks: [""] as string[],
     image: null as File | null,
   });
   const [imagePreview, setImagePreview] = useState<string>("");
@@ -70,17 +60,10 @@ export default function BlogManagement() {
 
   // Fetch posts
   const fetchPosts = async () => {
-    const token = getAuthToken();
-    if (!token) return;
-
     try {
       setLoading(true);
-      const response = await fetch(`${BASE_URL}/admin/fetch-posts`, {
+      const response = await apiFetch(`${BASE_URL}/admin/fetch-posts`, {
         method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/json",
-        },
       });
 
       if (!response.ok) {
@@ -120,32 +103,21 @@ export default function BlogManagement() {
   // Create post
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
-    const token = getAuthToken();
-    if (!token) return;
-
-    if (!formData.title || !formData.content) {
-      toast({
-        title: "Validation Error",
-        description: "Title and content are required",
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
       setSubmitting(true);
       const formDataToSend = new FormData();
       formDataToSend.append("title", formData.title);
-      formDataToSend.append("content", formData.content);
+
+      // Join blocks with double newlines for submission
+      const combinedContent = formData.contentBlocks.filter(b => b.trim()).join("\n\n");
+      formDataToSend.append("content", combinedContent);
+
       if (formData.image) {
         formDataToSend.append("image", formData.image);
       }
 
-      const response = await fetch(`${BASE_URL}/admin/create-post`, {
+      const response = await apiFetch(`${BASE_URL}/admin/create-post`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
         body: formDataToSend,
       });
 
@@ -175,34 +147,23 @@ export default function BlogManagement() {
   // Update post
   const handleUpdatePost = async (e: React.FormEvent) => {
     e.preventDefault();
-    const token = getAuthToken();
-    if (!token || !selectedPost) return;
-
-    if (!formData.title || !formData.content) {
-      toast({
-        title: "Validation Error",
-        description: "Title and content are required",
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
       setSubmitting(true);
       const formDataToSend = new FormData();
       formDataToSend.append("title", formData.title);
-      formDataToSend.append("content", formData.content);
+
+      // Join blocks with double newlines for submission
+      const combinedContent = formData.contentBlocks.filter(b => b.trim()).join("\n\n");
+      formDataToSend.append("content", combinedContent);
+
       if (formData.image) {
         formDataToSend.append("image", formData.image);
       }
 
-      const response = await fetch(
-        `${BASE_URL}/admin/update-post/${selectedPost._id}`,
+      const response = await apiFetch(
+        `${BASE_URL}/admin/update-post/${selectedPost?._id}`,
         {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          method: "PUT",
           body: formDataToSend,
         }
       );
@@ -231,14 +192,81 @@ export default function BlogManagement() {
     }
   };
 
+  // Delete post
+  const handleDeletePost = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this blog post?")) return;
+
+    try {
+      setLoading(true);
+      const response = await apiFetch(`${BASE_URL}/admin/delete-post/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete post");
+      }
+
+      toast({
+        title: "Success",
+        description: "Blog post deleted successfully",
+      });
+      fetchPosts();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete blog post",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Share post
+  const handleSharePost = (post: BlogPost) => {
+    const shareUrl = `https://joinonemai.com/blog/${post._id}`;
+    navigator.clipboard.writeText(shareUrl);
+    toast({
+      title: "Link Copied",
+      description: "Blog post link copied to clipboard",
+    });
+  };
+
   // Reset form
   const resetForm = () => {
     setFormData({
       title: "",
-      content: "",
+      contentBlocks: [""],
       image: null,
     });
     setImagePreview("");
+  };
+
+  // Block management
+  const addBlock = () => {
+    setFormData({
+      ...formData,
+      contentBlocks: [...formData.contentBlocks, ""]
+    });
+  };
+
+  const removeBlock = (index: number) => {
+    if (formData.contentBlocks.length <= 1) return;
+    const newBlocks = [...formData.contentBlocks];
+    newBlocks.splice(index, 1);
+    setFormData({
+      ...formData,
+      contentBlocks: newBlocks
+    });
+  };
+
+  const updateBlock = (index: number, value: string) => {
+    const newBlocks = [...formData.contentBlocks];
+    newBlocks[index] = value;
+    setFormData({
+      ...formData,
+      contentBlocks: newBlocks
+    });
   };
 
   // Open edit modal
@@ -246,11 +274,48 @@ export default function BlogManagement() {
     setSelectedPost(post);
     setFormData({
       title: post.title,
-      content: post.content,
+      contentBlocks: post.content ? post.content.split(/\n\n+/) : [""],
       image: null,
     });
     setImagePreview(`${IMAGE_BASE_URL}/${post.image}`);
     setIsEditModalOpen(true);
+  };
+
+  const applyFormatting = (tag: string, id: string) => {
+    const textarea = document.getElementById(id) as HTMLTextAreaElement;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+    const selectedText = text.substring(start, end);
+
+    let replacement = "";
+    if (tag === "bold") replacement = `**${selectedText}**`;
+    else if (tag === "italic") replacement = `*${selectedText}*`;
+    else if (tag === "link") replacement = `[${selectedText || "link text"}](url)`;
+    else if (tag === "h1") replacement = `\n# ${selectedText}`;
+    else if (tag === "h2") replacement = `\n## ${selectedText}`;
+    else if (tag === "list") replacement = `\n- ${selectedText}`;
+    else if (tag === "quote") replacement = `\n> ${selectedText}`;
+    else if (tag === "paragraph") replacement = `\n\n${selectedText}`;
+
+    const newContent = text.substring(0, start) + replacement + text.substring(end);
+
+    const match = id.match(/block-(\d+)/);
+    if (match) {
+      const index = parseInt(match[1]);
+      updateBlock(index, newContent);
+    }
+
+    // Focus back to textarea
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(
+        start + (selectedText ? replacement.length : replacement.indexOf("]") !== -1 ? replacement.indexOf("]") : replacement.length),
+        start + (selectedText ? replacement.length : replacement.indexOf("]") !== -1 ? replacement.indexOf("]") : replacement.length)
+      );
+    }, 0);
   };
 
   // Open view modal
@@ -387,6 +452,24 @@ export default function BlogManagement() {
                       <Pencil className="h-3.5 w-3.5 mr-1" />
                       Edit
                     </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleSharePost(post)}
+                      className="border-slate-200 text-slate-600 hover:bg-slate-50"
+                      title="Share"
+                    >
+                      <Share2 className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeletePost(post._id)}
+                      className="border-red-200 text-red-600 hover:bg-red-50"
+                      title="Delete"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -418,18 +501,118 @@ export default function BlogManagement() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="create-content">Content</Label>
-                <Textarea
-                  id="create-content"
-                  value={formData.content}
-                  onChange={(e) =>
-                    setFormData({ ...formData, content: e.target.value })
-                  }
-                  placeholder="Write your blog post content here..."
-                  rows={8}
-                  required
-                />
+              <div className="space-y-4">
+                <Label>Content (Paragraph by Paragraph)</Label>
+                {formData.contentBlocks.map((block, index) => (
+                  <div key={index} className="space-y-2 p-3 border border-slate-100 rounded-lg bg-slate-50/50">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-slate-500">Paragraph {index + 1}</span>
+                      <div className="flex gap-1">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => applyFormatting("bold", `create-block-${index}`)}
+                          className="h-7 w-7 p-0"
+                          title="Bold"
+                        >
+                          <Bold className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => applyFormatting("italic", `create-block-${index}`)}
+                          className="h-7 w-7 p-0"
+                          title="Italic"
+                        >
+                          <Italic className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => applyFormatting("link", `create-block-${index}`)}
+                          className="h-7 w-7 p-0"
+                          title="Insert Link"
+                        >
+                          <LinkIcon className="h-3.5 w-3.5" />
+                        </Button>
+                        <div className="w-px h-5 bg-slate-200 mx-1" />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => applyFormatting("h1", `create-block-${index}`)}
+                          className="h-7 w-7 p-0"
+                          title="Heading 1"
+                        >
+                          <Heading1 className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => applyFormatting("h2", `create-block-${index}`)}
+                          className="h-7 w-7 p-0"
+                          title="Heading 2"
+                        >
+                          <Heading2 className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => applyFormatting("list", `create-block-${index}`)}
+                          className="h-7 w-7 p-0"
+                          title="List"
+                        >
+                          <List className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => applyFormatting("quote", `create-block-${index}`)}
+                          className="h-7 w-7 p-0"
+                          title="Quote"
+                        >
+                          <Quote className="h-3.5 w-3.5" />
+                        </Button>
+                        {formData.contentBlocks.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeBlock(index)}
+                            className="h-7 w-7 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 ml-2"
+                            title="Remove Paragraph"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    <Textarea
+                      id={`create-block-${index}`}
+                      value={block}
+                      onChange={(e) => updateBlock(index, e.target.value)}
+                      placeholder={`Enter paragraph ${index + 1}...`}
+                      rows={3}
+                      required={index === 0}
+                    />
+                  </div>
+                ))}
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={addBlock}
+                  className="w-full border-dashed border-slate-300 text-slate-500 hover:text-[#1766a4] hover:border-[#1766a4] hover:bg-blue-50/30"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Another Paragraph
+                </Button>
               </div>
 
               <div className="space-y-2">
@@ -499,18 +682,118 @@ export default function BlogManagement() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="edit-content">Content</Label>
-                <Textarea
-                  id="edit-content"
-                  value={formData.content}
-                  onChange={(e) =>
-                    setFormData({ ...formData, content: e.target.value })
-                  }
-                  placeholder="Write your blog post content here..."
-                  rows={8}
-                  required
-                />
+              <div className="space-y-4">
+                <Label>Content (Paragraph by Paragraph)</Label>
+                {formData.contentBlocks.map((block, index) => (
+                  <div key={index} className="space-y-2 p-3 border border-slate-100 rounded-lg bg-slate-50/50">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-slate-500">Paragraph {index + 1}</span>
+                      <div className="flex gap-1">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => applyFormatting("bold", `edit-block-${index}`)}
+                          className="h-7 w-7 p-0"
+                          title="Bold"
+                        >
+                          <Bold className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => applyFormatting("italic", `edit-block-${index}`)}
+                          className="h-7 w-7 p-0"
+                          title="Italic"
+                        >
+                          <Italic className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => applyFormatting("link", `edit-block-${index}`)}
+                          className="h-7 w-7 p-0"
+                          title="Insert Link"
+                        >
+                          <LinkIcon className="h-3.5 w-3.5" />
+                        </Button>
+                        <div className="w-px h-5 bg-slate-200 mx-1" />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => applyFormatting("h1", `edit-block-${index}`)}
+                          className="h-7 w-7 p-0"
+                          title="Heading 1"
+                        >
+                          <Heading1 className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => applyFormatting("h2", `edit-block-${index}`)}
+                          className="h-7 w-7 p-0"
+                          title="Heading 2"
+                        >
+                          <Heading2 className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => applyFormatting("list", `edit-block-${index}`)}
+                          className="h-7 w-7 p-0"
+                          title="List"
+                        >
+                          <List className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => applyFormatting("quote", `edit-block-${index}`)}
+                          className="h-7 w-7 p-0"
+                          title="Quote"
+                        >
+                          <Quote className="h-3.5 w-3.5" />
+                        </Button>
+                        {formData.contentBlocks.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeBlock(index)}
+                            className="h-7 w-7 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 ml-2"
+                            title="Remove Paragraph"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    <Textarea
+                      id={`edit-block-${index}`}
+                      value={block}
+                      onChange={(e) => updateBlock(index, e.target.value)}
+                      placeholder={`Enter paragraph ${index + 1}...`}
+                      rows={3}
+                      required={index === 0}
+                    />
+                  </div>
+                ))}
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={addBlock}
+                  className="w-full border-dashed border-slate-300 text-slate-500 hover:text-[#1766a4] hover:border-[#1766a4] hover:bg-blue-50/30"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Another Paragraph
+                </Button>
               </div>
 
               <div className="space-y-2">
