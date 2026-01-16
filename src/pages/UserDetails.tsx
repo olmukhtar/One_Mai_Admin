@@ -55,11 +55,29 @@ type GroupMembership = {
   updatedAt: string;
 };
 
+type BankDetail = {
+  _id: string;
+  user: string;
+  bankName: string;
+  accountHolderName: string;
+  iban: string;
+  bic: string;
+  country: string;
+  currency: string;
+  stripeBankTokenId: string;
+  isVerified: boolean;
+  isDefault: boolean;
+  verificationDocuments: any[];
+  createdAt: string;
+  updatedAt: string;
+};
+
 type ApiResponse = {
   user: User;
   groups: GroupMembership[];
   contributions: any[];
   payouts: any[];
+  bankDetails: BankDetail[];
 };
 
 type UserRole = "admin" | "account" | "front_desk" | "customer_support";
@@ -495,6 +513,7 @@ export default function UserDetails() {
               <TabsList>
                 <TabsTrigger value="contributions">Contributions</TabsTrigger>
                 <TabsTrigger value="payouts">Payouts</TabsTrigger>
+                <TabsTrigger value="bankDetails">Bank Details</TabsTrigger>
               </TabsList>
 
               <TabsContent value="contributions">
@@ -522,6 +541,74 @@ export default function UserDetails() {
                       <div className="text-sm text-slate-500">No payouts.</div>
                     ) : (
                       <div className="text-sm">Coming soon.</div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="bankDetails">
+                <Card className="border border-slate-100 shadow-sm rounded-xl">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base font-semibold">Bank Details</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    {(data?.bankDetails?.length || 0) === 0 ? (
+                      <div className="text-sm text-slate-500">No bank details.</div>
+                    ) : (
+                      <div className="space-y-4">
+                        {data!.bankDetails.map((bank: BankDetail) => (
+                          <div
+                            key={bank._id}
+                            className={`p-4 rounded-lg border ${bank.isDefault
+                                ? "border-blue-200 bg-blue-50"
+                                : "border-slate-200 bg-slate-50"
+                              }`}
+                          >
+                            <div className="flex items-start justify-between mb-3">
+                              <div>
+                                <h4 className="font-semibold text-slate-900">{bank.bankName}</h4>
+                                <p className="text-sm text-slate-600">{bank.accountHolderName}</p>
+                              </div>
+                              <div className="flex gap-2">
+                                {bank.isDefault && (
+                                  <StatusBadge status="Default" />
+                                )}
+                                <StatusBadge status={bank.isVerified ? "Verified" : "Unverified"} />
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3 text-sm">
+                              <div>
+                                <span className="text-slate-500">IBAN:</span>
+                                <p className="font-mono text-slate-900 mt-1">{bank.iban}</p>
+                              </div>
+                              <div>
+                                <span className="text-slate-500">BIC:</span>
+                                <p className="font-mono text-slate-900 mt-1">{bank.bic}</p>
+                              </div>
+                              <div>
+                                <span className="text-slate-500">Country:</span>
+                                <p className="text-slate-900 mt-1 capitalize">{bank.country}</p>
+                              </div>
+                              <div>
+                                <span className="text-slate-500">Currency:</span>
+                                <p className="text-slate-900 mt-1">{bank.currency}</p>
+                              </div>
+                              <div className="col-span-2">
+                                <span className="text-slate-500">Added:</span>
+                                <p className="text-slate-900 mt-1">
+                                  {new Date(bank.createdAt).toLocaleString("en-NG", {
+                                    year: "numeric",
+                                    month: "short",
+                                    day: "2-digit",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </CardContent>
                 </Card>
