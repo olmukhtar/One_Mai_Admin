@@ -119,7 +119,7 @@ function useUserRole(): UserRole | null {
 }
 
 function fmtCurrency(n?: number) {
-  if (!n) return "₦0";
+  if (!n) return "€0";
   try {
     return new Intl.NumberFormat("de-DE", {
       style: "currency",
@@ -127,7 +127,7 @@ function fmtCurrency(n?: number) {
       maximumFractionDigits: 0,
     }).format(n);
   } catch {
-    return `₦${Math.round(n).toLocaleString()}`;
+    return `€${Math.round(n).toLocaleString()}`;
   }
 }
 
@@ -169,6 +169,9 @@ export default function UserDetails() {
   const userListPath = cameFromAffiliates ? "/affiliates" : (isAffiliateUser ? "/affiliates" : "/users");
 
   useEffect(() => {
+    // Reset data when user ID changes to ensure loader shows
+    setData(null);
+
     if (!token) {
       navigate("/login", { replace: true, state: { from: `/users/${id}` } });
       return;
@@ -265,6 +268,40 @@ export default function UserDetails() {
   const isAffiliate = u?.userType === "affiliate";
   const isAffiliateApproved = u?.isApproved || u?.isAprroved; // Check both due to API typo
 
+  // Show full-page loader when:
+  // 1. We're loading AND no data exists yet, OR
+  // 2. We're loading AND the data doesn't match the current user ID (navigating to different user)
+  const isLoadingNewUser = loading && (!data || data.user?._id !== id);
+
+  if (isLoadingNewUser) {
+    return (
+      <AdminLayout>
+        <div className="min-h-screen flex items-center justify-center bg-slate-50">
+          <div className="text-center space-y-6">
+            {/* Animated spinner */}
+            <div className="relative mx-auto w-16 h-16">
+              <div className="absolute inset-0 border-4 border-slate-200 rounded-full"></div>
+              <div className="absolute inset-0 border-4 border-[#207EC4] border-t-transparent rounded-full animate-spin"></div>
+            </div>
+
+            {/* Loading text */}
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold text-slate-900">Loading User Details</h3>
+              <p className="text-sm text-slate-600">Please wait while we fetch the user information...</p>
+            </div>
+
+            {/* Optional: Loading dots animation */}
+            <div className="flex items-center justify-center gap-2">
+              <div className="w-2 h-2 bg-[#207EC4] rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
+              <div className="w-2 h-2 bg-[#207EC4] rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+              <div className="w-2 h-2 bg-[#207EC4] rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+            </div>
+          </div>
+        </div>
+      </AdminLayout>
+    );
+  }
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -277,12 +314,20 @@ export default function UserDetails() {
           ]}
           rightSlot={
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => navigate(userListPath)}>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (location.state?.from) {
+                    navigate(location.state.from);
+                  } else {
+                    navigate(userListPath);
+                  }
+                }}
+              >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to {userListLabel}
               </Button>
               <Button variant="outline">Suspend</Button>
-              <Button>Edit</Button>
             </div>
           }
         />
@@ -301,7 +346,35 @@ export default function UserDetails() {
             </CardHeader>
             <CardContent className="pt-0">
               {loading ? (
-                <div className="text-slate-500 text-sm">Loading…</div>
+                <div className="space-y-4 animate-pulse">
+                  {/* Avatar and Name Skeleton */}
+                  <div className="flex items-center gap-3">
+                    <div className="h-16 w-16 rounded-full bg-slate-200"></div>
+                    <div className="flex-1 space-y-2">
+                      <div className="h-5 bg-slate-200 rounded w-32"></div>
+                      <div className="h-3 bg-slate-200 rounded w-24"></div>
+                    </div>
+                  </div>
+
+                  {/* Grid Info Skeleton */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {[...Array(8)].map((_, i) => (
+                      <div key={i} className="h-4 bg-slate-200 rounded"></div>
+                    ))}
+                  </div>
+
+                  {/* Contact Info Skeleton */}
+                  <div className="space-y-3">
+                    <div className="h-4 bg-slate-200 rounded w-full"></div>
+                    <div className="h-4 bg-slate-200 rounded w-3/4"></div>
+                  </div>
+
+                  {/* Buttons Skeleton */}
+                  <div className="flex gap-2">
+                    <div className="h-10 bg-slate-200 rounded flex-1"></div>
+                    <div className="h-10 bg-slate-200 rounded flex-1"></div>
+                  </div>
+                </div>
               ) : !u ? (
                 <div className="text-slate-500 text-sm">No user found.</div>
               ) : (
@@ -473,7 +546,11 @@ export default function UserDetails() {
               </CardHeader>
               <CardContent className="pt-0">
                 {loading ? (
-                  <div className="text-sm text-slate-500">Loading…</div>
+                  <div className="space-y-2 animate-pulse">
+                    {[...Array(3)].map((_, i) => (
+                      <div key={i} className="h-12 bg-slate-200 rounded"></div>
+                    ))}
+                  </div>
                 ) : (data?.groups?.length || 0) === 0 ? (
                   <div className="text-sm text-slate-500">No groups.</div>
                 ) : (
@@ -522,7 +599,13 @@ export default function UserDetails() {
                     <CardTitle className="text-base font-semibold">Contributions</CardTitle>
                   </CardHeader>
                   <CardContent className="pt-0">
-                    {(data?.contributions?.length || 0) === 0 ? (
+                    {loading ? (
+                      <div className="space-y-2 animate-pulse">
+                        {[...Array(3)].map((_, i) => (
+                          <div key={i} className="h-12 bg-slate-200 rounded"></div>
+                        ))}
+                      </div>
+                    ) : (data?.contributions?.length || 0) === 0 ? (
                       <div className="text-sm text-slate-500">No contributions.</div>
                     ) : (
                       <div className="text-sm">Coming soon.</div>
@@ -537,7 +620,13 @@ export default function UserDetails() {
                     <CardTitle className="text-base font-semibold">Payouts</CardTitle>
                   </CardHeader>
                   <CardContent className="pt-0">
-                    {(data?.payouts?.length || 0) === 0 ? (
+                    {loading ? (
+                      <div className="space-y-2 animate-pulse">
+                        {[...Array(3)].map((_, i) => (
+                          <div key={i} className="h-12 bg-slate-200 rounded"></div>
+                        ))}
+                      </div>
+                    ) : (data?.payouts?.length || 0) === 0 ? (
                       <div className="text-sm text-slate-500">No payouts.</div>
                     ) : (
                       <div className="text-sm">Coming soon.</div>
@@ -552,7 +641,20 @@ export default function UserDetails() {
                     <CardTitle className="text-base font-semibold">Bank Details</CardTitle>
                   </CardHeader>
                   <CardContent className="pt-0">
-                    {(data?.bankDetails?.length || 0) === 0 ? (
+                    {loading ? (
+                      <div className="space-y-4 animate-pulse">
+                        {[...Array(2)].map((_, i) => (
+                          <div key={i} className="p-4 rounded-lg border border-slate-200 space-y-3">
+                            <div className="h-5 bg-slate-200 rounded w-32"></div>
+                            <div className="grid grid-cols-2 gap-3">
+                              {[...Array(4)].map((_, j) => (
+                                <div key={j} className="h-4 bg-slate-200 rounded"></div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (data?.bankDetails?.length || 0) === 0 ? (
                       <div className="text-sm text-slate-500">No bank details.</div>
                     ) : (
                       <div className="space-y-4">
@@ -560,8 +662,8 @@ export default function UserDetails() {
                           <div
                             key={bank._id}
                             className={`p-4 rounded-lg border ${bank.isDefault
-                                ? "border-blue-200 bg-blue-50"
-                                : "border-slate-200 bg-slate-50"
+                              ? "border-blue-200 bg-blue-50"
+                              : "border-slate-200 bg-slate-50"
                               }`}
                           >
                             <div className="flex items-start justify-between mb-3">

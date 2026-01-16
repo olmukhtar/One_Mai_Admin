@@ -166,7 +166,7 @@ export default function Login() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
+              <div className="flex items-center">
                 <label className="flex items-center gap-2 text-sm text-slate-700">
                   <Checkbox
                     checked={remember}
@@ -174,9 +174,6 @@ export default function Login() {
                   />
                   Remember me
                 </label>
-                <span className="text-sm text-slate-400 select-none">
-                  Forgot password?
-                </span>
               </div>
 
               {error && (

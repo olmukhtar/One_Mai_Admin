@@ -1,6 +1,6 @@
 // /src/pages/admin/Users.tsx
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation, useSearchParams } from "react-router-dom";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { DataTable } from "@/components/admin/DataTable";
@@ -72,11 +72,17 @@ function nameOf(u: User) {
 
 export default function Users() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const token = useAuthToken();
   const userRole = useUserRole();
 
-  const [page, setPage] = useState(1);
-  const [searchQuery, setSearchQuery] = useState("");
+  // Initialize page from URL or default to 1
+  const initialPage = parseInt(searchParams.get("page") || "1", 10);
+  const [page, setPage] = useState(initialPage);
+
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
+  const [debouncedSearch, setDebouncedSearch] = useState(searchQuery);
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [data, setData] = useState<UsersResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -89,8 +95,38 @@ export default function Users() {
   const canViewDetails = hasFullAccess || hasLimitedView || hasReadOnly;
   const canSuspendUsers = hasFullAccess;
 
+  // Sync state with URL
+  useEffect(() => {
+    const p = parseInt(searchParams.get("page") || "1", 10);
+    const s = searchParams.get("search") || "";
+    if (p !== page) setPage(p);
+    if (s !== searchQuery) setSearchQuery(s);
+  }, [searchParams]);
+
+  // Debounce search query
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  // Update URL when debounced search changes
+  useEffect(() => {
+    const currentSearch = searchParams.get("search") || "";
+    if (debouncedSearch !== currentSearch) {
+      setSearchParams(prev => {
+        if (debouncedSearch) prev.set("search", debouncedSearch);
+        else prev.delete("search");
+        prev.set("page", "1");
+        return prev;
+      });
+      if (page !== 1) setPage(1);
+    }
+  }, [debouncedSearch]);
+
   // Fetch users data
-  const fetchUsers = (pageNum: number) => {
+  const fetchUsers = (pageNum: number, search?: string) => {
     if (!token) {
       setErr("Missing auth token. Sign in again.");
       return;
@@ -103,6 +139,7 @@ export default function Users() {
     const url = new URL(USERS_URL);
     url.searchParams.set("page", String(pageNum));
     url.searchParams.set("type", "normal");
+    if (search) url.searchParams.set("search", search);
 
     apiFetch(url.toString(), {
       method: "GET",
@@ -122,7 +159,16 @@ export default function Users() {
       .then((json: UsersResponse) => {
         setData(json);
         setAllUsers(json.users);
-        setPage(json.currentPage || pageNum);
+
+        // If API returns a different page (e.g. if we asked for 100 but only 50 exist), sync it
+        const actualPage = json.currentPage || pageNum;
+        if (actualPage !== page) {
+          setPage(actualPage);
+          setSearchParams(prev => {
+            prev.set("page", String(actualPage));
+            return prev;
+          });
+        }
       })
       .catch((e: any) => {
         if (e.name !== "AbortError") setErr(e?.message || "Failed to load users");
@@ -132,55 +178,27 @@ export default function Users() {
     return () => controller.abort();
   };
 
-  // Initial load
+  // Fetch when page, token, or search changes
   useEffect(() => {
-    fetchUsers(1);
-  }, [token]);
-
-  // Handle page change
-  useEffect(() => {
-    if (page !== 1) {
-      fetchUsers(page);
-    }
-  }, [page]);
+    fetchUsers(page, debouncedSearch);
+  }, [token, page, debouncedSearch]);
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    // Reset to first page when searching
-    if (page !== 1) {
-      setPage(1);
-    }
+    // Debounce effect will handle URL update and page reset
   };
 
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= (data?.totalPages || 1)) {
       setPage(newPage);
+      setSearchParams(prev => {
+        prev.set("page", String(newPage));
+        return prev;
+      });
     }
   };
 
-  // Real-time client-side filtering
-  const filteredUsers = useMemo(() => {
-    if (!allUsers || allUsers.length === 0) return [];
-
-    const query = searchQuery.toLowerCase().trim();
-    if (!query) return allUsers;
-
-    return allUsers.filter((user) => {
-      const name = nameOf(user).toLowerCase();
-      const email = (user.email || "").toLowerCase();
-      const phone = (user.phoneNumber || "").toLowerCase();
-      const userType = (user.userType || "").toLowerCase();
-      const status = (user.accountStatus || "").toLowerCase();
-
-      return (
-        name.includes(query) ||
-        email.includes(query) ||
-        phone.includes(query) ||
-        userType.includes(query) ||
-        status.includes(query)
-      );
-    });
-  }, [allUsers, searchQuery]);
+  // Server-side search - no client-side filtering needed
 
   // Build columns based on role permissions
   const columns = useMemo(() => {
@@ -202,6 +220,7 @@ export default function Users() {
               {canViewDetails ? (
                 <Link
                   to={`/users/${row._id}`}
+                  state={{ from: location }}
                   className="font-medium text-slate-900 hover:underline"
                 >
                   {nameOf(row)}
@@ -281,7 +300,7 @@ export default function Users() {
     ];
   }, [hasFullAccess, hasLimitedView, hasReadOnly, canViewDetails]);
 
-  const rows = filteredUsers.map((u) => ({
+  const rows = allUsers.map((u) => ({
     ...u,
     name: nameOf(u),
   }));
@@ -294,7 +313,7 @@ export default function Users() {
     if (canViewDetails) {
       actions.push({
         label: "View Details",
-        onClick: (row: User) => navigate(`/users/${row._id}`),
+        onClick: (row: User) => navigate(`/users/${row._id}`, { state: { from: location } }),
       });
     }
 
