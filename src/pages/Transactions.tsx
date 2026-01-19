@@ -282,31 +282,12 @@ export default function Transactions() {
           columns={columns}
           data={loading ? [] : rows}
           actionItems={actionItems}
+          currentPage={currentPage}
+          totalPages={totalPages}
           totalEntries={total}
+          onPageChange={(newPage) => setPage(newPage)}
+          loading={loading}
         />
-
-        {/* Pagination */}
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-slate-600">
-            Page {currentPage} of {totalPages} • {total} total
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage <= 1 || loading}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setPage((p) => (totalPages ? Math.min(totalPages, p + 1) : p + 1))}
-              disabled={currentPage >= totalPages || loading}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
       </div>
     </AdminLayout>
   );

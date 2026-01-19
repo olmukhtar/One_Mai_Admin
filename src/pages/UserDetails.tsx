@@ -9,6 +9,9 @@ import { Label } from "@/components/ui/label";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Copy, Mail, Phone, Shield, ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
+import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
+
+// --- Types ---
 
 type User = {
   _id: string;
@@ -27,7 +30,6 @@ type User = {
   referralCount?: number;
   createdAt?: string;
   updatedAt?: string;
-  // Affiliate specific fields
   isApproved?: boolean;
   isAprroved?: boolean; // Note: API has typo
   affiliateTier?: string;
@@ -46,11 +48,28 @@ type GroupMembership = {
     status: string;
     nextRecipient: string | null;
     id: string;
-  };
+  } | null; // Fix: Allow null for deleted or missing groups
   user: string;
   isActive: boolean;
   status: string;
   joinedAt: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type BankDetail = {
+  _id: string;
+  user: string;
+  bankName: string;
+  accountHolderName: string;
+  iban: string;
+  bic: string;
+  country: string;
+  currency: string;
+  stripeBankTokenId: string;
+  isVerified: boolean;
+  isDefault: boolean;
+  verificationDocuments: any[];
   createdAt: string;
   updatedAt: string;
 };
@@ -60,57 +79,24 @@ type ApiResponse = {
   groups: GroupMembership[];
   contributions: any[];
   payouts: any[];
+  bankDetails: BankDetail[];
 };
 
 type UserRole = "admin" | "account" | "front_desk" | "customer_support";
 
-import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
+// --- Constants & Helpers ---
 
 const BASE_URL = "https://api.joinonemai.com/api";
 const SHOW_URL = (id: string) => `${BASE_URL}/admin/users/${id}`;
 const APPROVE_AFFILIATE_URL = (id: string) => `${BASE_URL}/admin/users/${id}/approve-affiliate`;
 
-function useAuthToken() {
-  return useMemo(() => {
-    const raw =
-      localStorage.getItem(AUTH_STORAGE_KEY) ||
-      sessionStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) return null;
-    try {
-      const parsed = JSON.parse(raw);
-      return parsed?.token as string | null;
-    } catch {
-      return null;
-    }
-  }, []);
-}
-
-function useUserRole(): UserRole | null {
-  return useMemo(() => {
-    const raw =
-      localStorage.getItem(AUTH_STORAGE_KEY) ||
-      sessionStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) return null;
-    try {
-      const parsed = JSON.parse(raw);
-      return (parsed?.role as UserRole) || null;
-    } catch {
-      return null;
-    }
-  }, []);
-}
-
 function fmtCurrency(n?: number) {
-  if (!n) return "₦0";
-  try {
-    return new Intl.NumberFormat("de-DE", {
-      style: "currency",
-      currency: "EUR",
-      maximumFractionDigits: 0,
-    }).format(n);
-  } catch {
-    return `₦${Math.round(n).toLocaleString()}`;
-  }
+  if (!n && n !== 0) return "€0";
+  return new Intl.NumberFormat("de-DE", {
+    style: "currency",
+    currency: "EUR",
+    maximumFractionDigits: 0,
+  }).format(n);
 }
 
 function nameOf(u?: User) {
@@ -118,10 +104,10 @@ function nameOf(u?: User) {
   return `${(u.firstName || "").trim()} ${(u.lastName || "").trim()}`.trim();
 }
 
+// --- Main Component ---
+
 export default function UserDetails() {
   const { id = "" } = useParams();
-  const token = useAuthToken();
-  const role = useUserRole();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -129,402 +115,243 @@ export default function UserDetails() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
-  // Affiliate approval modal state
+  // Affiliate state
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [percentage, setPercentage] = useState("10");
   const [approving, setApproving] = useState(false);
   const [approvalError, setApprovalError] = useState<string | null>(null);
 
-  // Permission check - only admin and account can approve affiliates
+  // Auth & Roles
+  const token = useMemo(() => {
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
+    return raw ? JSON.parse(raw)?.token : null;
+  }, []);
+
+  const role = useMemo(() => {
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
+    return raw ? (JSON.parse(raw)?.role as UserRole) : null;
+  }, []);
+
   const canApproveAffiliate = role === "admin" || role === "account";
-
-  // Determine where we came from based on explicit state passed during navigation
-  const fromPage = (location.state as any)?.fromPage;
-  const cameFromAffiliates = fromPage === 'affiliates';
-
-  // Also check if the user is an affiliate type to help determine context
-  const isAffiliateUser = data?.user?.userType === "affiliate";
-
-  // Determine breadcrumbs and back link based on context
-  // Prioritize explicit fromPage state, then fall back to user type
-  const userListLabel = cameFromAffiliates ? "Affiliates" : (isAffiliateUser ? "Affiliates" : "Users");
-  const userListPath = cameFromAffiliates ? "/affiliates" : (isAffiliateUser ? "/affiliates" : "/users");
+  const cameFromAffiliates = (location.state as any)?.fromPage === 'affiliates';
+  const userListPath = (cameFromAffiliates || data?.user?.userType === "affiliate") ? "/affiliates" : "/users";
+  const userListLabel = (cameFromAffiliates || data?.user?.userType === "affiliate") ? "Affiliates" : "Users";
 
   useEffect(() => {
     if (!token) {
       navigate("/login", { replace: true, state: { from: `/users/${id}` } });
       return;
     }
-    if (!id) {
-      setErr("Missing user id");
-      setLoading(false);
-      return;
-    }
 
     const controller = new AbortController();
     setLoading(true);
-    setErr(null);
 
-    apiFetch(SHOW_URL(id), {
-      method: "GET",
-      signal: controller.signal,
-    })
+    apiFetch(SHOW_URL(id), { method: "GET", signal: controller.signal })
       .then(async (res) => {
-        if (!res.ok) {
-          let msg = `Failed to load user: ${res.status}`;
-          try {
-            const j = await res.json();
-            if (j?.message) msg = `Failed to load user: ${j.message}`;
-          } catch { }
-          throw new Error(msg);
-        }
+        if (!res.ok) throw new Error("Failed to load user data");
         return res.json();
       })
       .then((json: ApiResponse) => setData(json))
-      .catch((e: any) => {
-        if (e.name !== "AbortError") setErr(e?.message || "Failed to load user");
-      })
+      .catch((e) => e.name !== "AbortError" && setErr(e.message))
       .finally(() => setLoading(false));
 
     return () => controller.abort();
   }, [token, id, navigate]);
 
   const handleApproveAffiliate = async () => {
-    if (!token || !id) return;
-
-    const percentageNum = parseFloat(percentage);
-    if (isNaN(percentageNum) || percentageNum <= 0 || percentageNum > 100) {
-      setApprovalError("Please enter a valid percentage between 1 and 100");
-      return;
-    }
+    const pNum = parseFloat(percentage);
+    if (isNaN(pNum) || pNum <= 0 || pNum > 100) return setApprovalError("Invalid percentage");
 
     setApproving(true);
-    setApprovalError(null);
-
     try {
-      const response = await apiFetch(APPROVE_AFFILIATE_URL(id), {
+      const res = await apiFetch(APPROVE_AFFILIATE_URL(id), {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ percentage }),
       });
+      if (!res.ok) throw new Error("Approval failed");
 
-      if (!response.ok) {
-        let errorMsg = `Failed to approve affiliate: ${response.status}`;
-        try {
-          const errorData = await response.json();
-          if (errorData?.message) errorMsg = errorData.message;
-        } catch { }
-        throw new Error(errorMsg);
-      }
-
-      const result = await response.json();
-
-      // Update local state
-      if (data?.user) {
+      if (data) {
         setData({
           ...data,
-          user: {
-            ...data.user,
-            isApproved: true,
-            isAprroved: true,
-            commissionRate: percentageNum,
-          },
+          user: { ...data.user, isApproved: true, isAprroved: true, commissionRate: pNum }
         });
       }
-
       setShowApprovalModal(false);
-      setPercentage("10");
-    } catch (error: any) {
-      setApprovalError(error.message || "Failed to approve affiliate");
+    } catch (e: any) {
+      setApprovalError(e.message);
     } finally {
       setApproving(false);
     }
   };
 
+  if (loading && !data) {
+    return (
+      <AdminLayout>
+        <div className="min-h-[400px] flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        </div>
+      </AdminLayout>
+    );
+  }
+
   const u = data?.user;
-  const isAffiliate = u?.userType === "affiliate";
-  const isAffiliateApproved = u?.isApproved || u?.isAprroved; // Check both due to API typo
 
   return (
     <AdminLayout>
       <div className="space-y-6">
         <PageHeader
-          title={u ? nameOf(u) : "User"}
+          title={u ? nameOf(u) : "User Profile"}
           breadcrumbs={[
             { label: "Dashboard", href: "/dashboard" },
             { label: userListLabel, href: userListPath },
             { label: u ? nameOf(u) : "User" },
           ]}
           rightSlot={
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => navigate(userListPath)}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to {userListLabel}
-              </Button>
-              <Button variant="outline">Suspend</Button>
-              <Button>Edit</Button>
-            </div>
+            <Button variant="outline" onClick={() => navigate(userListPath)}>
+              <ArrowLeft className="h-4 w-4 mr-2" /> Back
+            </Button>
           }
         />
 
-        {err && (
-          <div className="text-sm text-red-600 bg-red-50 p-2 rounded border border-red-100">
-            {err}
-          </div>
-        )}
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* Left Column: Profile Card */}
+          <Card className="lg:col-span-1 shadow-sm h-fit">
+            <CardHeader><CardTitle className="text-base">Profile Info</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-4">
+                <img
+                  src={u?.image || `https://api.dicebear.com/7.x/initials/svg?seed=${u?.email}`}
+                  className="h-16 w-16 rounded-full border"
+                  alt="Avatar"
+                />
+                <div>
+                  <h2 className="font-bold text-lg">{nameOf(u)}</h2>
+                  <p className="text-xs text-slate-500 font-mono">{u?._id}</p>
+                </div>
+              </div>
 
-        <div className="grid gap-4 lg:grid-cols-3">
-          {/* Profile */}
-          <Card className="lg:col-span-1 border border-slate-100 shadow-sm rounded-xl">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base font-semibold">Profile</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              {loading ? (
-                <div className="text-slate-500 text-sm">Loading…</div>
-              ) : !u ? (
-                <div className="text-slate-500 text-sm">No user found.</div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={
-                        u.image ||
-                        `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
-                          nameOf(u) || u.email
-                        )}`
-                      }
-                      alt={nameOf(u)}
-                      className="h-16 w-16 rounded-full border border-slate-200 object-cover"
-                      onError={(e) => ((e.target as HTMLImageElement).style.display = "none")}
-                    />
-                    <div>
-                      <div className="text-lg font-semibold">{nameOf(u)}</div>
-                      <div className="text-xs text-slate-500">{u._id}</div>
-                    </div>
+              <div className="grid grid-cols-2 gap-y-3 text-sm border-t pt-4">
+                <span className="text-slate-500">Status</span>
+                <StatusBadge status={u?.accountStatus || "unknown"} />
+                <span className="text-slate-500">Verification</span>
+                <StatusBadge status={u?.isVerified ? "Verified" : "Unverified"} />
+                <span className="text-slate-500">Type</span>
+                <span className="capitalize font-medium">{u?.userType}</span>
+              </div>
+
+              <div className="space-y-2 pt-2">
+                <div className="flex items-center gap-2 text-sm">
+                  <Mail className="h-4 w-4 text-slate-400" />
+                  <span className="truncate">{u?.email}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <Phone className="h-4 w-4 text-slate-400" />
+                  <span>{u?.phoneNumber || "No phone"}</span>
+                </div>
+              </div>
+
+              {u?.userType === "affiliate" && (
+                <div className="bg-purple-50 p-3 rounded-lg border border-purple-100 mt-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs font-bold text-purple-700 uppercase">Affiliate</span>
+                    <StatusBadge status={(u.isApproved || u.isAprroved) ? "Approved" : "Pending"} />
                   </div>
-
-                  {/* Affiliate Approval Status - Show if user is affiliate */}
-                  {isAffiliate && (
-                    <div className="p-3 rounded-lg bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-medium text-purple-700">Affiliate Status</span>
-                        {isAffiliateApproved ? (
-                          <StatusBadge status="Approved" />
-                        ) : (
-                          <StatusBadge status="Pending Approval" />
-                        )}
-                      </div>
-                      {isAffiliateApproved ? (
-                        <div className="space-y-1 text-xs">
-                          <div className="flex justify-between">
-                            <span className="text-slate-600">Commission Rate:</span>
-                            <span className="font-semibold text-purple-700">{u.commissionRate}%</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-600">Tier:</span>
-                            <span className="font-semibold text-purple-700 capitalize">{u.affiliateTier || "N/A"}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-600">Total Earnings:</span>
-                            <span className="font-semibold text-purple-700">{fmtCurrency(u.totalEarnings)}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-600">Referrals:</span>
-                            <span className="font-semibold text-purple-700">{u.totalReferrals || 0}</span>
-                          </div>
-                          {u.referralCode && (
-                            <div className="flex justify-between">
-                              <span className="text-slate-600">Referral Code:</span>
-                              <span className="font-mono font-semibold text-purple-700">{u.referralCode}</span>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        canApproveAffiliate && (
-                          <Button
-                            size="sm"
-                            className="w-full mt-2 bg-purple-600 hover:bg-purple-700"
-                            onClick={() => setShowApprovalModal(true)}
-                          >
-                            <CheckCircle className="h-4 w-4 mr-2" />
-                            Approve Affiliate
-                          </Button>
-                        )
-                      )}
-                    </div>
+                  {!u.isApproved && !u.isAprroved && canApproveAffiliate && (
+                    <Button size="sm" className="w-full bg-purple-600" onClick={() => setShowApprovalModal(true)}>
+                      Approve Now
+                    </Button>
                   )}
-
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div className="text-slate-500">Type</div>
-                    <div><StatusBadge status={u.userType} /></div>
-
-                    <div className="text-slate-500">Status</div>
-                    <div><StatusBadge status={u.accountStatus} /></div>
-
-                    <div className="text-slate-500">Verified</div>
-                    <div><StatusBadge status={u.isVerified ? "Verified" : "Unverified"} /></div>
-
-                    <div className="text-slate-500">2FA</div>
-                    <div><StatusBadge status={u.twoFactor ? "On" : "Off"} /></div>
-
-                    <div className="text-slate-500">Auth</div>
-                    <div>{u.authType || "—"}</div>
-
-                    <div className="text-slate-500">Joined</div>
-                    <div>
-                      {u.createdAt
-                        ? new Date(u.createdAt).toLocaleString("en-NG", {
-                          year: "numeric",
-                          month: "short",
-                          day: "2-digit",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })
-                        : "—"}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-sm">
-                    <Mail className="h-4 w-4 text-slate-500" />
-                    <a className="text-blue-600 hover:underline" href={`mailto:${u.email}`}>{u.email}</a>
-                    <button
-                      className="ml-auto p-1 rounded hover:bg-slate-100"
-                      onClick={() => navigator.clipboard.writeText(u.email)}
-                      title="Copy email"
-                    >
-                      <Copy className="h-4 w-4 text-slate-500" />
-                    </button>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-sm">
-                    <Phone className="h-4 w-4 text-slate-500" />
-                    <span>{u.phoneNumber || "—"}</span>
-                    {u.phoneNumber && (
-                      <a className="ml-auto text-blue-600 hover:underline" href={`tel:${u.phoneNumber}`}>
-                        Call
-                      </a>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div className="text-slate-500">Referral Bonus</div>
-                    <div>{fmtCurrency(u.referralBonus || 0)}</div>
-
-                    <div className="text-slate-500">Payout Balance</div>
-                    <div>{fmtCurrency(u.payoutBalance || 0)}</div>
-
-                    <div className="text-slate-500">Referral Count</div>
-                    <div>{u.referralCount ?? 0}</div>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-xs text-slate-500">
-                    <Shield className="h-3.5 w-3.5" />
-                    Last update{" "}
-                    {u.updatedAt
-                      ? new Date(u.updatedAt).toLocaleString("en-NG", {
-                        year: "numeric",
-                        month: "short",
-                        day: "2-digit",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })
-                      : "—"}
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Button asChild className="w-full">
-                      <Link to={userListPath}>All {userListLabel}</Link>
-                    </Button>
-                    <Button variant="outline" className="w-full">
-                      Message
-                    </Button>
-                  </div>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Details + Related */}
-          <div className="lg:col-span-2 space-y-4">
-            <Card className="border border-slate-100 shadow-sm rounded-xl">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base font-semibold">Groups</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                {loading ? (
-                  <div className="text-sm text-slate-500">Loading…</div>
-                ) : (data?.groups?.length || 0) === 0 ? (
-                  <div className="text-sm text-slate-500">No groups.</div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full text-sm">
-                      <thead className="text-left text-slate-500">
-                        <tr className="border-b border-slate-100">
-                          <th className="py-2 pr-4">Name</th>
-                          <th className="py-2 pr-4">Savings Amount</th>
-                          <th className="py-2 pr-4">Status</th>
-                          <th className="py-2 pr-4">Joined</th>
+          {/* Right Column: Content Tabs */}
+          <div className="lg:col-span-2 space-y-6">
+            <Card className="shadow-sm">
+              <CardHeader><CardTitle className="text-base">Savings Groups</CardTitle></CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left border-b text-slate-500">
+                        <th className="pb-2 font-medium">Group Name</th>
+                        <th className="pb-2 font-medium">Monthly</th>
+                        <th className="pb-2 font-medium">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data?.groups.map((g) => (
+                        <tr key={g._id} className="border-b last:border-0">
+                          {/* Fix: Optional chaining for group name */}
+                          <td className="py-3 font-medium text-blue-600">
+                            {g.group?.name || <span className="text-slate-400 italic">Unknown Group</span>}
+                          </td>
+                          <td className="py-3">{fmtCurrency(g.group?.savingsAmount)}</td>
+                          <td className="py-3"><StatusBadge status={g.group?.status || "inactive"} /></td>
                         </tr>
-                      </thead>
-                      <tbody className="text-slate-800">
-                        {data!.groups.map((g: GroupMembership) => (
-                          <tr key={g._id} className="border-b border-slate-100">
-                            <td className="py-2 pr-4">{g.group.name}</td>
-                            <td className="py-2 pr-4">{fmtCurrency(g.group.savingsAmount)}</td>
-                            <td className="py-2 pr-4"><StatusBadge status={g.group.status} /></td>
-                            <td className="py-2 pr-4">
-                              {new Date(g.joinedAt).toLocaleDateString("en-NG", {
-                                year: "numeric",
-                                month: "short",
-                                day: "2-digit",
-                              })}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                      ))}
+                      {(!data?.groups || data.groups.length === 0) && (
+                        <tr><td colSpan={3} className="py-4 text-center text-slate-500">No groups joined.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </CardContent>
             </Card>
 
-            <Tabs defaultValue="contributions" className="w-full">
-              <TabsList>
+            <Tabs defaultValue="bankDetails" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="contributions">Contributions</TabsTrigger>
                 <TabsTrigger value="payouts">Payouts</TabsTrigger>
+                <TabsTrigger value="bankDetails">Bank Details</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="contributions">
-                <Card className="border border-slate-100 shadow-sm rounded-xl">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base font-semibold">Contributions</CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    {(data?.contributions?.length || 0) === 0 ? (
-                      <div className="text-sm text-slate-500">No contributions.</div>
-                    ) : (
-                      <div className="text-sm">Coming soon.</div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
+              <TabsContent value="bankDetails" className="pt-4">
+                <div className="grid gap-4">
+                  {data?.bankDetails.map((bank) => (
+                    <Card key={bank._id} className={`border-l-4 ${bank.isDefault ? 'border-l-blue-500' : 'border-l-slate-300'}`}>
+                      <CardContent className="pt-6">
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <h4 className="font-bold text-lg">{bank.bankName}</h4>
+                            <p className="text-sm text-slate-600">{bank.accountHolderName}</p>
+                          </div>
+                          <div className="flex gap-2">
+                            {bank.isDefault && <StatusBadge status="Default" />}
+                            <StatusBadge status={bank.isVerified ? "Verified" : "Unverified"} />
+                          </div>
+                        </div>
 
-              <TabsContent value="payouts">
-                <Card className="border border-slate-100 shadow-sm rounded-xl">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base font-semibold">Payouts</CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    {(data?.payouts?.length || 0) === 0 ? (
-                      <div className="text-sm text-slate-500">No payouts.</div>
-                    ) : (
-                      <div className="text-sm">Coming soon.</div>
-                    )}
-                  </CardContent>
-                </Card>
+                        {/* Fix: Rendering all fields from JSON */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm bg-slate-50 p-4 rounded-md">
+                          <div>
+                            <p className="text-slate-500 text-xs uppercase font-bold mb-1">IBAN</p>
+                            <p className="font-mono break-all">{bank.iban}</p>
+                          </div>
+                          <div>
+                            <p className="text-slate-500 text-xs uppercase font-bold mb-1">BIC/SWIFT</p>
+                            <p className="font-mono">{bank.bic}</p>
+                          </div>
+                          <div>
+                            <p className="text-slate-500 text-xs uppercase font-bold mb-1">Country</p>
+                            <p className="capitalize">{bank.country}</p>
+                          </div>
+                          <div>
+                            <p className="text-slate-500 text-xs uppercase font-bold mb-1">Currency</p>
+                            <p>{bank.currency}</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                  {(!data?.bankDetails || data.bankDetails.length === 0) && (
+                    <div className="text-center py-12 border rounded-lg border-dashed text-slate-500">
+                      No bank accounts registered.
+                    </div>
+                  )}
+                </div>
               </TabsContent>
             </Tabs>
           </div>
@@ -533,72 +360,23 @@ export default function UserDetails() {
 
       {/* Affiliate Approval Modal */}
       {showApprovalModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-slate-900 mb-2">
-              Approve Affiliate
-            </h3>
-            <p className="text-sm text-slate-600 mb-4">
-              Set the commission percentage for {nameOf(u)}. This will determine how much they earn from referrals.
-            </p>
-
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="percentage">Commission Percentage (%)</Label>
-                <Input
-                  id="percentage"
-                  type="number"
-                  min="1"
-                  max="100"
-                  step="0.1"
-                  value={percentage}
-                  onChange={(e) => setPercentage(e.target.value)}
-                  placeholder="10"
-                  className="mt-1"
-                />
-                <p className="text-xs text-slate-500 mt-1">
-                  Enter a percentage between 1 and 100
-                </p>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <Card className="max-w-md w-full">
+            <CardHeader><CardTitle>Approve Affiliate</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Commission Rate (%)</Label>
+                <Input type="number" value={percentage} onChange={(e) => setPercentage(e.target.value)} />
               </div>
-
-              {approvalError && (
-                <div className="text-sm text-red-600 bg-red-50 p-2 rounded border border-red-100">
-                  {approvalError}
-                </div>
-              )}
-
-              <div className="flex gap-3 justify-end">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowApprovalModal(false);
-                    setApprovalError(null);
-                    setPercentage("10");
-                  }}
-                  disabled={approving}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleApproveAffiliate}
-                  disabled={approving}
-                  className="bg-purple-600 hover:bg-purple-700"
-                >
-                  {approving ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Approving...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      Approve Affiliate
-                    </>
-                  )}
+              {approvalError && <p className="text-red-500 text-sm">{approvalError}</p>}
+              <div className="flex justify-end gap-3 pt-2">
+                <Button variant="ghost" onClick={() => setShowApprovalModal(false)}>Cancel</Button>
+                <Button className="bg-purple-600" onClick={handleApproveAffiliate} disabled={approving}>
+                  {approving ? <Loader2 className="animate-spin h-4 w-4" /> : "Approve"}
                 </Button>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
       )}
     </AdminLayout>
