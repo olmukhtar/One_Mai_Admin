@@ -93,7 +93,7 @@ const Resources = () => {
     visibility: "public",
   });
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
-  const [resourceFile, setResourceFile] = useState<File | null>(null);
+  const [resourceFile, setResourceFile] = useState<File | string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -196,7 +196,13 @@ const Resources = () => {
         formDataToSend.append("thumbnail", thumbnailFile);
       }
       if (resourceFile) {
-        formDataToSend.append("file", resourceFile);
+        if (typeof resourceFile === 'string') {
+          // For link type, send the URL as a string field
+          formDataToSend.append("link", resourceFile);
+        } else {
+          // For other types, send the file
+          formDataToSend.append("file", resourceFile);
+        }
       }
 
       const response = await apiFetch(ADD_RESOURCE_URL, {
@@ -613,21 +619,38 @@ const Resources = () => {
 
               <div>
                 <label className="text-sm font-medium text-slate-700 block mb-2">
-                  Resource File
+                  Resource File {formData.type !== 'link' && formData.type !== 'banner' ? '*' : ''}
                 </label>
-                <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center">
-                  <Upload className="h-8 w-8 text-slate-400 mx-auto mb-2" />
+                {formData.type === 'link' ? (
                   <input
-                    type="file"
-                    onChange={(e) => setResourceFile(e.target.files?.[0] || null)}
-                    className="text-sm text-slate-600"
+                    type="url"
+                    value={typeof resourceFile === 'string' ? resourceFile : ''}
+                    onChange={(e) => setResourceFile(e.target.value as any)}
+                    className="w-full border border-slate-300 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter URL (e.g., https://example.com)"
                   />
-                  {resourceFile && (
-                    <p className="text-sm text-green-600 mt-2">
-                      Selected: {resourceFile.name}
-                    </p>
-                  )}
-                </div>
+                ) : (
+                  <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center">
+                    <Upload className="h-8 w-8 text-slate-400 mx-auto mb-2" />
+                    <input
+                      type="file"
+                      accept={
+                        formData.type === 'video' ? 'video/*' :
+                          formData.type === 'image' ? 'image/*' :
+                            formData.type === 'document' ? '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx' :
+                              formData.type === 'banner' ? 'image/*' :
+                                '*'
+                      }
+                      onChange={(e) => setResourceFile(e.target.files?.[0] || null)}
+                      className="text-sm text-slate-600"
+                    />
+                    {resourceFile && typeof resourceFile !== 'string' && (
+                      <p className="text-sm text-green-600 mt-2">
+                        Selected: {resourceFile.name}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
