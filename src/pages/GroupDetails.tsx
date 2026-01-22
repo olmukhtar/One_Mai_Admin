@@ -69,11 +69,11 @@ function ngn(n: number) {
   try {
     return new Intl.NumberFormat("en-NG", {
       style: "currency",
-      currency: "NGN",
+      currency: "EUR",
       maximumFractionDigits: 0,
     }).format(n);
   } catch {
-    return `₦${Math.round(n).toLocaleString()}`;
+    return `€${Math.round(n).toLocaleString()}`;
   }
 }
 
@@ -142,7 +142,6 @@ export default function GroupDetails() {
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back
               </Button>
-              <Button variant="outline">Edit</Button>
             </div>
           }
         />

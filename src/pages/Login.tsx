@@ -19,7 +19,15 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
 
   const navigate = useNavigate();
-  const { state } = useLocation() as { state?: { from?: string } };
+  const location = useLocation();
+  const state = location.state as { from?: string } | undefined;
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("expired") === "true") {
+      setError("Session expired. Please log in again.");
+    }
+  }, [location.search]);
 
   useEffect(() => {
     const raw =
@@ -95,7 +103,11 @@ export default function Login() {
         })
       );
 
-      navigate(state?.from || "/dashboard", { replace: true });
+      const params = new URLSearchParams(location.search);
+      const fromParam = params.get("from");
+      const redirectPath = state?.from || (fromParam ? decodeURIComponent(fromParam) : "/dashboard");
+      
+      navigate(redirectPath, { replace: true });
     } catch (err) {
       setError(
         err instanceof Error ? `Network error: ${err.message}` : "Network error"

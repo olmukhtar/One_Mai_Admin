@@ -41,7 +41,8 @@ export async function apiFetch(url: string | URL, init?: RequestInit): Promise<R
         // Using window.location to ensure a hard redirect in case of router context issues
         // or if we're deeply nested where navigation props aren't available
         if (!window.location.pathname.includes("/login")) {
-            window.location.href = "/login?expired=true";
+            const currentPath = encodeURIComponent(window.location.pathname + window.location.search);
+            window.location.href = `/login?expired=true&from=${currentPath}`;
         }
     }
 
