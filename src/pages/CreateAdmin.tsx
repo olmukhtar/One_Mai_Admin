@@ -40,7 +40,7 @@ interface AdminUser {
 
 const BASE = "https://api.joinonemai.com/api";
 const CREATE_ENDPOINT = `${BASE}/admin/auth/create-admin`;
-const FETCH_ADMINS_ENDPOINT = `${BASE}/admin/auth/get-admins`;
+const FETCH_ADMINS_ENDPOINT = `${BASE}/admin/fetch-admins`;
 const UPDATE_ENDPOINT = (id: string) => `${BASE}/admin/update-admins/${id}`;
 const DELETE_ENDPOINT = (id: string) => `${BASE}/admin/delete-admins/${id}`;
 const ROLES_ENDPOINT = `${BASE}/admin/auth/get-roles`;
