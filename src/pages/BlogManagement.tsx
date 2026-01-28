@@ -14,7 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, FileText, Calendar, Eye, Share2, Bold, Italic, Link as LinkIcon, Heading1, Heading2, List, Quote, Type } from "lucide-react";
+import { Plus, Pencil, Trash2, FileText, Calendar, Eye, Share2, Bold, Italic, Link as LinkIcon, Heading1, Heading2, List, Quote, Type, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
@@ -48,6 +48,8 @@ export default function BlogManagement() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState<BlogPost | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
   // Form state
   const [formData, setFormData] = useState({
@@ -58,11 +60,24 @@ export default function BlogManagement() {
   const [imagePreview, setImagePreview] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
 
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   // Fetch posts
   const fetchPosts = async () => {
     try {
       setLoading(true);
-      const response = await apiFetch(`${BASE_URL}/admin/fetch-posts`, {
+      const url = new URL(`${BASE_URL}/admin/fetch-posts`);
+      if (debouncedSearch) {
+        url.searchParams.set("search", debouncedSearch);
+      }
+
+      const response = await apiFetch(url.toString(), {
         method: "GET",
       });
 
@@ -85,7 +100,7 @@ export default function BlogManagement() {
 
   useEffect(() => {
     fetchPosts();
-  }, []);
+  }, [debouncedSearch]);
 
   // Handle image selection
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -346,16 +361,36 @@ export default function BlogManagement() {
         />
 
         {/* Action Bar */}
-        <div className="flex justify-between items-center">
-          <p className="text-sm text-slate-600">
-            Manage your blog posts and content
-          </p>
+        <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+          <div className="flex flex-col gap-2 w-full max-w-md">
+            <p className="text-sm text-slate-600">
+              Manage your blog posts and content
+            </p>
+            <div className="relative w-full">
+              <Input
+                type="text"
+                placeholder="Search posts..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-4 pr-10"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
           <Button
             onClick={() => {
               resetForm();
               setIsCreateModalOpen(true);
             }}
-            className="bg-gradient-to-r from-[#1766a4] to-[#207EC4] hover:from-[#155a8a] hover:to-[#1a6ba8] text-white shadow-lg"
+            className="bg-gradient-to-r from-[#1766a4] to-[#207EC4] hover:from-[#155a8a] hover:to-[#1a6ba8] text-white shadow-lg shrink-0"
           >
             <Plus className="h-4 w-4 mr-2" />
             Create Post
@@ -372,21 +407,31 @@ export default function BlogManagement() {
             <CardContent className="py-12 text-center">
               <FileText className="h-12 w-12 mx-auto text-slate-300 mb-4" />
               <h3 className="text-lg font-semibold text-slate-900 mb-2">
-                No blog posts yet
+                {searchQuery ? "No matching posts found" : "No blog posts yet"}
               </h3>
               <p className="text-sm text-slate-500 mb-4">
-                Get started by creating your first blog post
+                {searchQuery ? "Try refining your search terms" : "Get started by creating your first blog post"}
               </p>
-              <Button
-                onClick={() => {
-                  resetForm();
-                  setIsCreateModalOpen(true);
-                }}
-                className="bg-gradient-to-r from-[#1766a4] to-[#207EC4] hover:from-[#155a8a] hover:to-[#1a6ba8] text-white"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Create Post
-              </Button>
+              {!searchQuery && (
+                <Button
+                  onClick={() => {
+                    resetForm();
+                    setIsCreateModalOpen(true);
+                  }}
+                  className="bg-gradient-to-r from-[#1766a4] to-[#207EC4] hover:from-[#155a8a] hover:to-[#1a6ba8] text-white"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Post
+                </Button>
+              )}
+              {searchQuery && (
+                <Button
+                  variant="outline"
+                  onClick={() => setSearchQuery("")}
+                >
+                  Clear Search
+                </Button>
+              )}
             </CardContent>
           </Card>
         ) : (

@@ -6,8 +6,18 @@ import { PageHeader } from "@/components/admin/PageHeader";
 import { DataTable } from "@/components/admin/DataTable";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, XCircle, Loader2, ShieldAlert } from "lucide-react";
+import { CheckCircle, XCircle, Loader2, ShieldAlert, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { DatePickerWithRange } from "@/components/ui/date-range-picker";
+import { DateRange } from "react-day-picker";
+import { format } from "date-fns";
 
 type PayoutRequest = {
   _id: string;
@@ -82,6 +92,11 @@ export default function PayoutRequests() {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [date, setDate] = useState<DateRange | undefined>();
+
   // Confirmation modal state
   const [confirmAction, setConfirmAction] = useState<{
     id: string;
@@ -95,6 +110,19 @@ export default function PayoutRequests() {
   const canView = role === "admin" || role === "account" || role === "customer_support";
   const canUpdate = role === "admin" || role === "account";
   const isViewOnly = role === "customer_support";
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, statusFilter, date]);
 
   useEffect(() => {
     if (!token) {
@@ -113,6 +141,18 @@ export default function PayoutRequests() {
 
     const u = new URL(ENDPOINT);
     u.searchParams.set("page", String(page));
+    if (debouncedSearch) {
+      u.searchParams.set("search", debouncedSearch);
+    }
+    if (statusFilter && statusFilter !== "all") {
+      u.searchParams.set("status", statusFilter);
+    }
+    if (date?.from) {
+      u.searchParams.set("startDate", format(date.from, "yyyy-MM-dd"));
+    }
+    if (date?.to) {
+      u.searchParams.set("endDate", format(date.to, "yyyy-MM-dd"));
+    }
 
     apiFetch(u.toString(), {
       signal: ctl.signal,
@@ -135,7 +175,7 @@ export default function PayoutRequests() {
       .finally(() => setLoading(false));
 
     return () => ctl.abort();
-  }, [token, page, navigate, canView]);
+  }, [token, page, navigate, canView, debouncedSearch, statusFilter, date]);
 
   const handleStatusUpdate = async (id: string, status: "completed" | "failed") => {
     if (!token) return;
@@ -339,8 +379,55 @@ export default function PayoutRequests() {
         <PageHeader
           title="Payout Requests"
           breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Payout Requests" }]}
-          searchPlaceholder="Search by user or id…"
+          showSearch={false}
         />
+
+        {/* Filters */}
+        <div className="flex flex-col xl:flex-row gap-4">
+          <div className="relative flex-1 max-w-md">
+            <input
+              type="text"
+              placeholder="Search by user or id..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-4 py-2 pr-10 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="w-full sm:w-48">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                  <SelectItem value="failed">Failed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <DatePickerWithRange date={date} setDate={setDate} />
+          </div>
+        </div>
+
+        {debouncedSearch && (
+          <div className="text-sm text-slate-600">
+            Found {total} requests
+          </div>
+        )}
 
         {isViewOnly && (
           <div className="text-sm text-amber-700 bg-amber-50 p-3 rounded border border-amber-200">

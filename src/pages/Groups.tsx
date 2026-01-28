@@ -5,6 +5,17 @@ import { PageHeader } from "@/components/admin/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/admin/StatusBadge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { X } from "lucide-react";
+import { DatePickerWithRange } from "@/components/ui/date-range-picker";
+import { DateRange } from "react-day-picker";
+import { format } from "date-fns";
 
 type GroupLite = {
   _id: string;
@@ -73,6 +84,22 @@ export default function Groups() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [date, setDate] = useState<DateRange | undefined>();
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, statusFilter, date]);
 
   useEffect(() => {
     if (!token) {
@@ -86,6 +113,18 @@ export default function Groups() {
 
     const url = new URL(GROUPS_URL);
     url.searchParams.set("page", String(page));
+    if (debouncedSearch) {
+      url.searchParams.set("search", debouncedSearch);
+    }
+    if (statusFilter && statusFilter !== "all") {
+      url.searchParams.set("status", statusFilter);
+    }
+    if (date?.from) {
+      url.searchParams.set("startDate", format(date.from, "yyyy-MM-dd"));
+    }
+    if (date?.to) {
+      url.searchParams.set("endDate", format(date.to, "yyyy-MM-dd"));
+    }
 
     apiFetch(url.toString(), {
       signal: ctl.signal,
@@ -108,24 +147,12 @@ export default function Groups() {
       .finally(() => setLoading(false));
 
     return () => ctl.abort();
-  }, [token, page, navigate]);
+  }, [token, page, debouncedSearch, statusFilter, date, navigate]);
 
   const rows = data?.groups ?? [];
   const totalPages = data?.totalPages ?? 1;
   const currentPage = data?.currentPage ?? page;
   const totalGroups = data?.totalGroups ?? 0;
-
-  // Filter groups based on search query
-  const filteredRows = useMemo(() => {
-    if (!searchQuery.trim()) return rows;
-    const query = searchQuery.toLowerCase();
-    return rows.filter((g) =>
-      g.name?.toLowerCase().includes(query) ||
-      g.admin?.email?.toLowerCase().includes(query) ||
-      g.inviteCode?.toLowerCase().includes(query) ||
-      g.status?.toLowerCase().includes(query)
-    );
-  }, [rows, searchQuery]);
 
   // Generate page numbers for pagination
   const pageNumbers = useMemo(() => {
@@ -170,15 +197,14 @@ export default function Groups() {
         <PageHeader
           title="Groups"
           breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Groups" }]}
-          searchPlaceholder="Search groups…"
         />
 
-        {/* Search Bar */}
-        <div className="flex items-center gap-4">
+        {/* Filters */}
+        <div className="flex flex-col xl:flex-row gap-4">
           <div className="relative flex-1 max-w-md">
             <input
               type="text"
-              placeholder="Search by name, email, invite code, or status..."
+              placeholder="Search by name..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full px-4 py-2 pr-10 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -188,16 +214,36 @@ export default function Groups() {
                 onClick={() => setSearchQuery("")}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
               >
-                ✕
+                <X className="h-4 w-4" />
               </button>
             )}
           </div>
-          {searchQuery && (
-            <div className="text-sm text-slate-600">
-              {filteredRows.length} of {rows.length} groups
+
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="w-full sm:w-48">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="paused">Paused</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          )}
+
+            <DatePickerWithRange date={date} setDate={setDate} />
+          </div>
         </div>
+
+        {debouncedSearch && (
+          <div className="text-sm text-slate-600">
+            Found {totalGroups} groups
+          </div>
+        )}
 
         {err && (
           <div className="text-sm text-red-600 bg-red-50 p-2 rounded border border-red-100">{err}</div>
@@ -227,14 +273,14 @@ export default function Groups() {
                     <tr>
                       <td colSpan={8} className="py-6 text-center text-slate-500">Loading…</td>
                     </tr>
-                  ) : filteredRows.length === 0 ? (
+                  ) : rows.length === 0 ? (
                     <tr>
                       <td colSpan={8} className="py-6 text-center text-slate-500">
-                        {searchQuery ? "No groups match your search." : "No groups."}
+                        {debouncedSearch || statusFilter !== 'all' || date ? "No groups match your filters." : "No groups found."}
                       </td>
                     </tr>
                   ) : (
-                    filteredRows.map((g) => (
+                    rows.map((g) => (
                       <tr key={g._id} className="border-b border-slate-100">
                         <td className="py-2 pr-4">
                           <Link to={`/groups/${g._id}`} className="font-medium hover:underline">
