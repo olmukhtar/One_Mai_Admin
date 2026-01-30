@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { CalendarIcon } from "lucide-react"
+import { CalendarIcon, X } from "lucide-react"
 import { addDays, format } from "date-fns"
 import { DateRange } from "react-day-picker"
 
@@ -48,6 +48,17 @@ export function DatePickerWithRange({
                             )
                         ) : (
                             <span>Pick a date</span>
+                        )}
+                        {date?.from && (
+                            <div
+                                className="ml-auto hover:bg-slate-200 p-1 rounded-full transition-colors cursor-pointer"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDate(undefined);
+                                }}
+                            >
+                                <X className="h-4 w-4 text-slate-500 hover:text-slate-700" />
+                            </div>
                         )}
                     </Button>
                 </PopoverTrigger>
