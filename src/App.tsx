@@ -34,6 +34,8 @@ import CreateAdmin from "./pages/CreateAdmin";
 import Resources from "./pages/Resources";
 import BlogManagement from "./pages/BlogManagement";
 import KnowledgeBase from "./pages/KnowledgeBase";
+import CreateBlog from "./pages/CreateBlog";
+import EditBlog from "./pages/EditBlog";
 
 const queryClient = new QueryClient();
 const AUTH_STORAGE_KEY = "admin_auth";
@@ -219,6 +221,22 @@ const App = () => (
               element={
                 <RequireAuth>
                   <BlogManagement />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/blog/create"
+              element={
+                <RequireAuth>
+                  <CreateBlog />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/blog/edit/:id"
+              element={
+                <RequireAuth>
+                  <EditBlog />
                 </RequireAuth>
               }
             />

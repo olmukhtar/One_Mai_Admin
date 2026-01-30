@@ -4,20 +4,18 @@ import { PageHeader } from "@/components/admin/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, FileText, Calendar, Eye, Share2, Bold, Italic, Link as LinkIcon, Heading1, Heading2, List, Quote, Type, X } from "lucide-react";
+import { Plus, Pencil, Trash2, FileText, Calendar, Eye, Share2, X, Globe } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
-import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 
 const BASE_URL = "https://api.joinonemai.com/api";
 const IMAGE_BASE_URL = "https://api.joinonemai.com";
@@ -26,6 +24,7 @@ interface BlogPost {
   _id: string;
   image: string;
   title: string;
+  domain?: string;
   content: string;
   status: "published" | "draft";
   createdAt: string;
@@ -38,27 +37,15 @@ interface BlogResponse {
   message: string;
 }
 
-
-
 export default function BlogManagement() {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState<BlogPost | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-
-  // Form state
-  const [formData, setFormData] = useState({
-    title: "",
-    contentBlocks: [""] as string[],
-    image: null as File | null,
-  });
-  const [imagePreview, setImagePreview] = useState<string>("");
-  const [submitting, setSubmitting] = useState(false);
 
   // Debounce search query
   useEffect(() => {
@@ -102,111 +89,6 @@ export default function BlogManagement() {
     fetchPosts();
   }, [debouncedSearch]);
 
-  // Handle image selection
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setFormData({ ...formData, image: file });
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  // Create post
-  const handleCreatePost = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      setSubmitting(true);
-      const formDataToSend = new FormData();
-      formDataToSend.append("title", formData.title);
-
-      // Join blocks with double newlines for submission
-      const combinedContent = formData.contentBlocks.filter(b => b.trim()).join("\n\n");
-      formDataToSend.append("content", combinedContent);
-
-      if (formData.image) {
-        formDataToSend.append("image", formData.image);
-      }
-
-      const response = await apiFetch(`${BASE_URL}/admin/create-post`, {
-        method: "POST",
-        body: formDataToSend,
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to create post");
-      }
-
-      toast({
-        title: "Success",
-        description: "Blog post created successfully",
-      });
-
-      setIsCreateModalOpen(false);
-      resetForm();
-      fetchPosts();
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to create blog post",
-        variant: "destructive",
-      });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  // Update post
-  const handleUpdatePost = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      setSubmitting(true);
-      const formDataToSend = new FormData();
-      formDataToSend.append("title", formData.title);
-
-      // Join blocks with double newlines for submission
-      const combinedContent = formData.contentBlocks.filter(b => b.trim()).join("\n\n");
-      formDataToSend.append("content", combinedContent);
-
-      if (formData.image) {
-        formDataToSend.append("image", formData.image);
-      }
-
-      const response = await apiFetch(
-        `${BASE_URL}/admin/update-post/${selectedPost?._id}`,
-        {
-          method: "PUT",
-          body: formDataToSend,
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to update post");
-      }
-
-      toast({
-        title: "Success",
-        description: "Blog post updated successfully",
-      });
-
-      setIsEditModalOpen(false);
-      resetForm();
-      setSelectedPost(null);
-      fetchPosts();
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update blog post",
-        variant: "destructive",
-      });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   // Delete post
   const handleDeletePost = async (id: string) => {
     if (!confirm("Are you sure you want to delete this blog post?")) return;
@@ -239,98 +121,12 @@ export default function BlogManagement() {
 
   // Share post
   const handleSharePost = (post: BlogPost) => {
-    const shareUrl = `https://joinonemai.com/blog/${post._id}`;
+    const shareUrl = `https://app.joinonemai.com/blog/${post._id}`;
     navigator.clipboard.writeText(shareUrl);
     toast({
       title: "Link Copied",
       description: "Blog post link copied to clipboard",
     });
-  };
-
-  // Reset form
-  const resetForm = () => {
-    setFormData({
-      title: "",
-      contentBlocks: [""],
-      image: null,
-    });
-    setImagePreview("");
-  };
-
-  // Block management
-  const addBlock = () => {
-    setFormData({
-      ...formData,
-      contentBlocks: [...formData.contentBlocks, ""]
-    });
-  };
-
-  const removeBlock = (index: number) => {
-    if (formData.contentBlocks.length <= 1) return;
-    const newBlocks = [...formData.contentBlocks];
-    newBlocks.splice(index, 1);
-    setFormData({
-      ...formData,
-      contentBlocks: newBlocks
-    });
-  };
-
-  const updateBlock = (index: number, value: string) => {
-    const newBlocks = [...formData.contentBlocks];
-    newBlocks[index] = value;
-    setFormData({
-      ...formData,
-      contentBlocks: newBlocks
-    });
-  };
-
-  // Open edit modal
-  const openEditModal = (post: BlogPost) => {
-    setSelectedPost(post);
-    setFormData({
-      title: post.title,
-      contentBlocks: post.content ? post.content.split(/\n\n+/) : [""],
-      image: null,
-    });
-    setImagePreview(`${IMAGE_BASE_URL}/${post.image}`);
-    setIsEditModalOpen(true);
-  };
-
-  const applyFormatting = (tag: string, id: string) => {
-    const textarea = document.getElementById(id) as HTMLTextAreaElement;
-    if (!textarea) return;
-
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const text = textarea.value;
-    const selectedText = text.substring(start, end);
-
-    let replacement = "";
-    if (tag === "bold") replacement = `**${selectedText}**`;
-    else if (tag === "italic") replacement = `*${selectedText}*`;
-    else if (tag === "link") replacement = `[${selectedText || "link text"}](url)`;
-    else if (tag === "h1") replacement = `\n# ${selectedText}`;
-    else if (tag === "h2") replacement = `\n## ${selectedText}`;
-    else if (tag === "list") replacement = `\n- ${selectedText}`;
-    else if (tag === "quote") replacement = `\n> ${selectedText}`;
-    else if (tag === "paragraph") replacement = `\n\n${selectedText}`;
-
-    const newContent = text.substring(0, start) + replacement + text.substring(end);
-
-    const match = id.match(/block-(\d+)/);
-    if (match) {
-      const index = parseInt(match[1]);
-      updateBlock(index, newContent);
-    }
-
-    // Focus back to textarea
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(
-        start + (selectedText ? replacement.length : replacement.indexOf("]") !== -1 ? replacement.indexOf("]") : replacement.length),
-        start + (selectedText ? replacement.length : replacement.indexOf("]") !== -1 ? replacement.indexOf("]") : replacement.length)
-      );
-    }, 0);
   };
 
   // Open view modal
@@ -386,10 +182,7 @@ export default function BlogManagement() {
           </div>
 
           <Button
-            onClick={() => {
-              resetForm();
-              setIsCreateModalOpen(true);
-            }}
+            onClick={() => navigate("/blog/create")}
             className="bg-gradient-to-r from-[#1766a4] to-[#207EC4] hover:from-[#155a8a] hover:to-[#1a6ba8] text-white shadow-lg shrink-0"
           >
             <Plus className="h-4 w-4 mr-2" />
@@ -414,10 +207,7 @@ export default function BlogManagement() {
               </p>
               {!searchQuery && (
                 <Button
-                  onClick={() => {
-                    resetForm();
-                    setIsCreateModalOpen(true);
-                  }}
+                  onClick={() => navigate("/blog/create")}
                   className="bg-gradient-to-r from-[#1766a4] to-[#207EC4] hover:from-[#155a8a] hover:to-[#1a6ba8] text-white"
                 >
                   <Plus className="h-4 w-4 mr-2" />
@@ -449,7 +239,7 @@ export default function BlogManagement() {
                       alt={post.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
-                    <div className="absolute top-2 right-2">
+                    <div className="absolute top-2 right-2 flex flex-col gap-2 items-end">
                       <span
                         className={`px-3 py-1 rounded-full text-xs font-medium ${post.status === "published"
                           ? "bg-emerald-500 text-white"
@@ -458,6 +248,12 @@ export default function BlogManagement() {
                       >
                         {post.status}
                       </span>
+                      {post.domain && (
+                        <span className="px-2 py-1 rounded-full text-[10px] font-bold bg-white/90 text-[#1766a4] shadow-sm flex items-center gap-1 backdrop-blur-sm border border-slate-100">
+                          <Globe className="h-2.5 w-2.5" />
+                          {post.domain}
+                        </span>
+                      )}
                     </div>
                   </div>
                 )}
@@ -491,7 +287,7 @@ export default function BlogManagement() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => openEditModal(post)}
+                      onClick={() => navigate(`/blog/edit/${post._id}`)}
                       className="flex-1 border-blue-200 text-blue-600 hover:bg-blue-50"
                     >
                       <Pencil className="h-3.5 w-3.5 mr-1" />
@@ -522,369 +318,6 @@ export default function BlogManagement() {
           </div>
         )}
 
-        {/* Create Post Modal */}
-        <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Create New Blog Post</DialogTitle>
-              <DialogDescription>
-                Fill in the details below to create a new blog post
-              </DialogDescription>
-            </DialogHeader>
-
-            <form onSubmit={handleCreatePost} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="create-title">Title</Label>
-                <Input
-                  id="create-title"
-                  value={formData.title}
-                  onChange={(e) =>
-                    setFormData({ ...formData, title: e.target.value })
-                  }
-                  placeholder="Enter post title"
-                  required
-                />
-              </div>
-
-              <div className="space-y-4">
-                <Label>Content (Paragraph by Paragraph)</Label>
-                {formData.contentBlocks.map((block, index) => (
-                  <div key={index} className="space-y-2 p-3 border border-slate-100 rounded-lg bg-slate-50/50">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium text-slate-500">Paragraph {index + 1}</span>
-                      <div className="flex gap-1">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => applyFormatting("bold", `create-block-${index}`)}
-                          className="h-7 w-7 p-0"
-                          title="Bold"
-                        >
-                          <Bold className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => applyFormatting("italic", `create-block-${index}`)}
-                          className="h-7 w-7 p-0"
-                          title="Italic"
-                        >
-                          <Italic className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => applyFormatting("link", `create-block-${index}`)}
-                          className="h-7 w-7 p-0"
-                          title="Insert Link"
-                        >
-                          <LinkIcon className="h-3.5 w-3.5" />
-                        </Button>
-                        <div className="w-px h-5 bg-slate-200 mx-1" />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => applyFormatting("h1", `create-block-${index}`)}
-                          className="h-7 w-7 p-0"
-                          title="Heading 1"
-                        >
-                          <Heading1 className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => applyFormatting("h2", `create-block-${index}`)}
-                          className="h-7 w-7 p-0"
-                          title="Heading 2"
-                        >
-                          <Heading2 className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => applyFormatting("list", `create-block-${index}`)}
-                          className="h-7 w-7 p-0"
-                          title="List"
-                        >
-                          <List className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => applyFormatting("quote", `create-block-${index}`)}
-                          className="h-7 w-7 p-0"
-                          title="Quote"
-                        >
-                          <Quote className="h-3.5 w-3.5" />
-                        </Button>
-                        {formData.contentBlocks.length > 1 && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeBlock(index)}
-                            className="h-7 w-7 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 ml-2"
-                            title="Remove Paragraph"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    <Textarea
-                      id={`create-block-${index}`}
-                      value={block}
-                      onChange={(e) => updateBlock(index, e.target.value)}
-                      placeholder={`Enter paragraph ${index + 1}...`}
-                      rows={3}
-                      required={index === 0}
-                    />
-                  </div>
-                ))}
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={addBlock}
-                  className="w-full border-dashed border-slate-300 text-slate-500 hover:text-[#1766a4] hover:border-[#1766a4] hover:bg-blue-50/30"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Another Paragraph
-                </Button>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="create-image">Image</Label>
-                <Input
-                  id="create-image"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                />
-                {imagePreview && (
-                  <div className="mt-2 relative w-full h-48 bg-slate-100 rounded-lg overflow-hidden">
-                    <img
-                      src={imagePreview}
-                      alt="Preview"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                )}
-              </div>
-
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setIsCreateModalOpen(false);
-                    resetForm();
-                  }}
-                  disabled={submitting}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={submitting}
-                  className="bg-gradient-to-r from-[#1766a4] to-[#207EC4] hover:from-[#155a8a] hover:to-[#1a6ba8] text-white"
-                >
-                  {submitting ? "Creating..." : "Create Post"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        {/* Edit Post Modal */}
-        <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Edit Blog Post</DialogTitle>
-              <DialogDescription>
-                Update the details of your blog post
-              </DialogDescription>
-            </DialogHeader>
-
-            <form onSubmit={handleUpdatePost} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-title">Title</Label>
-                <Input
-                  id="edit-title"
-                  value={formData.title}
-                  onChange={(e) =>
-                    setFormData({ ...formData, title: e.target.value })
-                  }
-                  placeholder="Enter post title"
-                  required
-                />
-              </div>
-
-              <div className="space-y-4">
-                <Label>Content (Paragraph by Paragraph)</Label>
-                {formData.contentBlocks.map((block, index) => (
-                  <div key={index} className="space-y-2 p-3 border border-slate-100 rounded-lg bg-slate-50/50">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium text-slate-500">Paragraph {index + 1}</span>
-                      <div className="flex gap-1">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => applyFormatting("bold", `edit-block-${index}`)}
-                          className="h-7 w-7 p-0"
-                          title="Bold"
-                        >
-                          <Bold className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => applyFormatting("italic", `edit-block-${index}`)}
-                          className="h-7 w-7 p-0"
-                          title="Italic"
-                        >
-                          <Italic className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => applyFormatting("link", `edit-block-${index}`)}
-                          className="h-7 w-7 p-0"
-                          title="Insert Link"
-                        >
-                          <LinkIcon className="h-3.5 w-3.5" />
-                        </Button>
-                        <div className="w-px h-5 bg-slate-200 mx-1" />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => applyFormatting("h1", `edit-block-${index}`)}
-                          className="h-7 w-7 p-0"
-                          title="Heading 1"
-                        >
-                          <Heading1 className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => applyFormatting("h2", `edit-block-${index}`)}
-                          className="h-7 w-7 p-0"
-                          title="Heading 2"
-                        >
-                          <Heading2 className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => applyFormatting("list", `edit-block-${index}`)}
-                          className="h-7 w-7 p-0"
-                          title="List"
-                        >
-                          <List className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => applyFormatting("quote", `edit-block-${index}`)}
-                          className="h-7 w-7 p-0"
-                          title="Quote"
-                        >
-                          <Quote className="h-3.5 w-3.5" />
-                        </Button>
-                        {formData.contentBlocks.length > 1 && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeBlock(index)}
-                            className="h-7 w-7 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 ml-2"
-                            title="Remove Paragraph"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    <Textarea
-                      id={`edit-block-${index}`}
-                      value={block}
-                      onChange={(e) => updateBlock(index, e.target.value)}
-                      placeholder={`Enter paragraph ${index + 1}...`}
-                      rows={3}
-                      required={index === 0}
-                    />
-                  </div>
-                ))}
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={addBlock}
-                  className="w-full border-dashed border-slate-300 text-slate-500 hover:text-[#1766a4] hover:border-[#1766a4] hover:bg-blue-50/30"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Another Paragraph
-                </Button>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="edit-image">Image (optional - leave empty to keep current)</Label>
-                <Input
-                  id="edit-image"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                />
-                {imagePreview && (
-                  <div className="mt-2 relative w-full h-48 bg-slate-100 rounded-lg overflow-hidden">
-                    <img
-                      src={imagePreview}
-                      alt="Preview"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                )}
-              </div>
-
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setIsEditModalOpen(false);
-                    resetForm();
-                    setSelectedPost(null);
-                  }}
-                  disabled={submitting}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={submitting}
-                  className="bg-gradient-to-r from-[#1766a4] to-[#207EC4] hover:from-[#155a8a] hover:to-[#1a6ba8] text-white"
-                >
-                  {submitting ? "Updating..." : "Update Post"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-
         {/* View Post Modal */}
         <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -905,6 +338,12 @@ export default function BlogManagement() {
                 >
                   {selectedPost?.status}
                 </span>
+                {selectedPost?.domain && (
+                  <span className="px-2 py-1 rounded-full text-[10px] font-bold bg-[#1766a4] text-white shadow-sm flex items-center gap-1">
+                    <Globe className="h-2.5 w-2.5" />
+                    {selectedPost.domain}
+                  </span>
+                )}
               </div>
             </DialogHeader>
 
@@ -937,7 +376,7 @@ export default function BlogManagement() {
                 onClick={() => {
                   setIsViewModalOpen(false);
                   if (selectedPost) {
-                    openEditModal(selectedPost);
+                    navigate(`/blog/edit/${selectedPost._id}`);
                   }
                 }}
                 className="bg-gradient-to-r from-[#1766a4] to-[#207EC4] hover:from-[#155a8a] hover:to-[#1a6ba8] text-white"
