@@ -10,6 +10,7 @@ import { Plus, Trash2, Bold, Italic, Link as LinkIcon, Heading1, Heading2, List,
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate, useParams } from "react-router-dom";
 import { apiFetch } from "@/lib/api";
+import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/constants";
 import {
     Select,
     SelectContent,
@@ -17,9 +18,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-
-const BASE_URL = "https://api.joinonemai.com/api";
-const IMAGE_BASE_URL = "https://api.joinonemai.com";
 
 interface BlogPost {
     _id: string;
@@ -57,7 +55,7 @@ export default function EditBlog() {
         const fetchPost = async () => {
             try {
                 setLoading(true);
-                const response = await apiFetch(`${BASE_URL}/admin/fetch-posts`);
+                const response = await apiFetch(`${API_BASE_URL}/admin/fetch-posts`);
                 if (!response.ok) throw new Error("Failed to fetch posts");
 
                 const data = await response.json();
@@ -171,7 +169,7 @@ export default function EditBlog() {
                 formDataToSend.append("image", formData.featuredImage);
             }
 
-            const response = await apiFetch(`${BASE_URL}/admin/update-post/${id}`, {
+            const response = await apiFetch(`${API_BASE_URL}/admin/update-post/${id}`, {
                 method: "PUT",
                 body: formDataToSend,
             });

@@ -16,9 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 
 import { apiFetch } from "@/lib/api";
-
-const BASE_URL = "https://api.joinonemai.com/api";
-const IMAGE_BASE_URL = "https://api.joinonemai.com";
+import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/constants";
 
 interface BlogPost {
   _id: string;
@@ -59,7 +57,7 @@ export default function BlogManagement() {
   const fetchPosts = async () => {
     try {
       setLoading(true);
-      const url = new URL(`${BASE_URL}/admin/fetch-posts`);
+      const url = new URL(`${API_BASE_URL}/admin/fetch-posts`);
       if (debouncedSearch) {
         url.searchParams.set("search", debouncedSearch);
       }
@@ -95,7 +93,7 @@ export default function BlogManagement() {
 
     try {
       setLoading(true);
-      const response = await apiFetch(`${BASE_URL}/admin/delete-post/${id}`, {
+      const response = await apiFetch(`${API_BASE_URL}/admin/delete-post/${id}`, {
         method: "DELETE",
       });
 

@@ -10,6 +10,7 @@ import { Plus, Trash2, Bold, Italic, Link as LinkIcon, Heading1, Heading2, List,
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "@/lib/api";
+import { API_BASE_URL } from "@/lib/constants";
 import {
     Select,
     SelectContent,
@@ -17,8 +18,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-
-const BASE_URL = "https://api.joinonemai.com/api";
 
 type Section =
     | { id: string; type: 'text'; content: string }
@@ -107,7 +106,7 @@ export default function CreateBlog() {
                 formDataToSend.append("image", formData.featuredImage);
             }
 
-            const response = await apiFetch(`${BASE_URL}/admin/create-post`, {
+            const response = await apiFetch(`${API_BASE_URL}/admin/create-post`, {
                 method: "POST",
                 body: formDataToSend,
             });
