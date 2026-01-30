@@ -8,7 +8,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 
 import { AUTH_STORAGE_KEY } from "@/lib/api";
-const LOGIN_URL = "https://api.joinonemai.com/api/admin/auth/login";
+import { API_BASE_URL } from "@/lib/constants";
+const LOGIN_URL = `${API_BASE_URL}/admin/auth/login`;
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -106,7 +107,7 @@ export default function Login() {
       const params = new URLSearchParams(location.search);
       const fromParam = params.get("from");
       const redirectPath = state?.from || (fromParam ? decodeURIComponent(fromParam) : "/dashboard");
-      
+
       navigate(redirectPath, { replace: true });
     } catch (err) {
       setError(

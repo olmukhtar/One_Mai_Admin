@@ -46,9 +46,9 @@ type GroupsResponse = {
 };
 
 import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
+import { API_BASE_URL } from "@/lib/constants";
 
-const BASE = "https://api.joinonemai.com/api";
-const GROUPS_URL = `${BASE}/admin/groups`;
+const GROUPS_URL = `${API_BASE_URL}/admin/groups`;
 
 function useToken() {
   return useMemo(() => {

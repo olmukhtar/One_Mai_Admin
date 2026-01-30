@@ -28,8 +28,9 @@ import { Plus, Pencil, Trash2, HelpCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 import { apiFetch, AUTH_STORAGE_KEY, getAuthToken } from "@/lib/api";
+import { API_BASE_URL } from "@/lib/constants";
 
-const BASE_URL = "https://api.joinonemai.com/api";
+
 
 interface KnowledgeBaseItem {
     _id: string;
@@ -69,7 +70,7 @@ export default function KnowledgeBase() {
 
         try {
             setLoading(true);
-            const response = await apiFetch(`${BASE_URL}/admin/knowledge-base`, {
+            const response = await apiFetch(`${API_BASE_URL}/admin/knowledge-base`, {
                 method: "GET",
             });
 
@@ -115,7 +116,7 @@ export default function KnowledgeBase() {
 
         try {
             setSubmitting(true);
-            const response = await apiFetch(`${BASE_URL}/admin/knowledge-base`, {
+            const response = await apiFetch(`${API_BASE_URL}/admin/knowledge-base`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -164,7 +165,7 @@ export default function KnowledgeBase() {
         try {
             setSubmitting(true);
             const response = await apiFetch(
-                `${BASE_URL}/admin/knowledge-base/${selectedItem._id}`,
+                `${API_BASE_URL}/admin/knowledge-base/${selectedItem._id}`,
                 {
                     method: "PUT",
                     headers: {
@@ -206,7 +207,7 @@ export default function KnowledgeBase() {
         try {
             setSubmitting(true);
             const response = await apiFetch(
-                `${BASE_URL}/admin/knowledge-base/${selectedItem._id}`,
+                `${API_BASE_URL}/admin/knowledge-base/${selectedItem._id}`,
                 {
                     method: "DELETE",
                 }

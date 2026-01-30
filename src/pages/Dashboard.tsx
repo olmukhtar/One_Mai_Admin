@@ -47,9 +47,9 @@ type StatsResponse = {
 type UserRole = "admin" | "account" | "front_desk" | "customer_support";
 
 import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
+import { API_BASE_URL } from "@/lib/constants";
 
-const BASE_URL = "https://api.joinonemai.com/api";
-const STATS_URL = `${BASE_URL}/admin/dashboard/stats`;
+const STATS_URL = `${API_BASE_URL}/admin/dashboard/stats`;
 
 function useAuthToken() {
   return useMemo(() => {
