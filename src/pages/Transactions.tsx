@@ -37,7 +37,7 @@ type TxnResponse = {
 
 type UserRole = "admin" | "account" | "front_desk" | "customer_support";
 
-const BASE = "https://api.joinonemai.com/api";
+const BASE = "https://test.joinonemai.com/api";
 const URL_TXNS = `${BASE}/admin/transactions`;
 
 function useToken() {

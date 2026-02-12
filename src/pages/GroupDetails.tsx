@@ -49,7 +49,7 @@ type GroupShowResponse = {
   payouts: any[];
 };
 
-const BASE = "https://api.joinonemai.com/api";
+const BASE = "https://test.joinonemai.com/api";
 const SHOW_URL = (id: string) => `${BASE}/admin/groups/${id}`;
 
 function useToken() {
