@@ -38,7 +38,7 @@ interface AdminUser {
   createdAt: string;
 }
 
-const BASE = "https://api.joinonemai.com/api";
+const BASE = "https://test.joinonemai.com/api";
 const CREATE_ENDPOINT = `${BASE}/admin/auth/create-admin`;
 const FETCH_ADMINS_ENDPOINT = `${BASE}/admin/fetch-admins`;
 const UPDATE_ENDPOINT = (id: string) => `${BASE}/admin/update-admins/${id}`;

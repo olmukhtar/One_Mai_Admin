@@ -39,7 +39,7 @@ type SupportsResponse = {
 
 type UserRole = "admin" | "account" | "front_desk" | "customer_support";
 
-const BASE = "https://api.joinonemai.com/api";
+const BASE = "https://test.joinonemai.com/api";
 const SUPPORTS_URL = `${BASE}/admin/supports`;
 
 function useToken() {

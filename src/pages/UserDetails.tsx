@@ -86,7 +86,7 @@ type UserRole = "admin" | "account" | "front_desk" | "customer_support";
 
 // --- Constants & Helpers ---
 
-const BASE_URL = "https://api.joinonemai.com/api";
+const BASE_URL = "https://test.joinonemai.com/api";
 const SHOW_URL = (id: string) => `${BASE_URL}/admin/users/${id}`;
 const APPROVE_AFFILIATE_URL = (id: string) => `${BASE_URL}/admin/users/${id}/approve-affiliate`;
 

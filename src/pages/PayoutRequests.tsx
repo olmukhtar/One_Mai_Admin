@@ -39,7 +39,7 @@ type UserRole = "admin" | "account" | "front_desk" | "customer_support";
 
 import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
 
-const BASE = "https://api.joinonemai.com/api";
+const BASE = "https://test.joinonemai.com/api";
 const ENDPOINT = `${BASE}/admin/payout-requests`;
 const STATUS_ENDPOINT = `${BASE}/admin/payout-requests/status`;
 

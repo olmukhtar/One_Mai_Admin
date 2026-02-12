@@ -36,7 +36,7 @@ type ResourcesResponse = {
 
 type UserRole = "admin" | "account" | "front_desk" | "customer_support";
 
-const BASE = "https://api.joinonemai.com/api";
+const BASE = "https://test.joinonemai.com/api";
 const RESOURCES_URL = `${BASE}/admin/fetch-resource`;
 const ADD_RESOURCE_URL = `${BASE}/admin/add-resource`;
 const DELETE_RESOURCE_URL = `${BASE}/admin/delete-resource`;
