@@ -21,7 +21,8 @@ import { format } from "date-fns";
 
 type PayoutRequest = {
   _id: string;
-  user: { _id: string; email?: string } | string | null;
+  user?: { _id: string; email?: string } | string | null;
+  requester?: { _id: string; email?: string; firstName?: string; lastName?: string } | string | null;
   amount: number;
   status: "pending" | "approved" | "rejected" | "completed" | "failed" | string;
   createdAt: string;
@@ -285,12 +286,17 @@ export default function PayoutRequests() {
       key: "user",
       label: "User",
       render: (_: any, row: PayoutRequest) => {
-        if (!row.user) return <span className="text-slate-500">Unknown</span>;
-        const id = typeof row.user === "string" ? row.user : row.user._id;
-        const email = typeof row.user === "string" ? row.user : row.user.email || id;
+        const u = row.requester || row.user;
+        if (!u) return <span className="text-slate-500">Unknown</span>;
+
+        const id = typeof u === "string" ? u : u._id;
+        const display = typeof u === "string"
+          ? u
+          : (u.email || (u as any).firstName || id);
+
         return (
           <Link to={`/users/${id}`} className="text-blue-600 hover:underline font-mono text-xs">
-            {email}
+            {display}
           </Link>
         );
       },
@@ -358,7 +364,8 @@ export default function PayoutRequests() {
       {
         label: "View User",
         onClick: (row: PayoutRequest) => {
-          const id = typeof row.user === "string" ? row.user : row.user?._id;
+          const u = row.requester || row.user;
+          const id = typeof u === "string" ? u : u?._id;
           if (id) navigate(`/users/${id}`);
         },
       },
@@ -367,7 +374,8 @@ export default function PayoutRequests() {
       {
         label: "View User",
         onClick: (row: PayoutRequest) => {
-          const id = typeof row.user === "string" ? row.user : row.user?._id;
+          const u = row.requester || row.user;
+          const id = typeof u === "string" ? u : u?._id;
           if (id) navigate(`/users/${id}`);
         },
       },
