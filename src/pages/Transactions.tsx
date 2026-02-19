@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ShieldAlert } from "lucide-react";
 
 import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
+import { API_BASE_URL } from "@/lib/constants";
 
 type Transaction = {
   _id: string;
@@ -37,7 +38,7 @@ type TxnResponse = {
 
 type UserRole = "admin" | "account" | "front_desk" | "customer_support";
 
-const BASE = "https://test.joinonemai.com/api";
+const BASE = API_BASE_URL;
 const URL_TXNS = `${BASE}/admin/transactions`;
 
 function useToken() {

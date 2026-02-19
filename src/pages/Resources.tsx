@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar, X, Plus, Loader2, Upload, Trash2, Edit } from "lucide-react";
 
 import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
+import { API_BASE_URL } from "@/lib/constants";
 
 type Resource = {
   _id: string;
@@ -36,7 +37,7 @@ type ResourcesResponse = {
 
 type UserRole = "admin" | "account" | "front_desk" | "customer_support";
 
-const BASE = "https://test.joinonemai.com/api";
+const BASE = API_BASE_URL;
 const RESOURCES_URL = `${BASE}/admin/fetch-resource`;
 const ADD_RESOURCE_URL = `${BASE}/admin/add-resource`;
 const DELETE_RESOURCE_URL = `${BASE}/admin/delete-resource`;

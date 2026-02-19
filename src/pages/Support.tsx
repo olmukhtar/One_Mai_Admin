@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar, X, Send, Loader2 } from "lucide-react";
 
 import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
+import { API_BASE_URL } from "@/lib/constants";
 
 type Message = {
   _id: string;
@@ -39,7 +40,7 @@ type SupportsResponse = {
 
 type UserRole = "admin" | "account" | "front_desk" | "customer_support";
 
-const BASE = "https://test.joinonemai.com/api";
+const BASE = API_BASE_URL;
 const SUPPORTS_URL = `${BASE}/admin/supports`;
 
 function useToken() {

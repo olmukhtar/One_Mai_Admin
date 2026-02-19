@@ -32,8 +32,9 @@ type UsersResponse = {
 type UserRole = "admin" | "account" | "frontDesk" | "customerSupport";
 
 import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
+import { API_BASE_URL } from "@/lib/constants";
 
-const BASE_URL = "https://test.joinonemai.com/api";
+const BASE_URL = API_BASE_URL;
 const USERS_URL = `${BASE_URL}/admin/users`;
 
 function useAuthToken() {

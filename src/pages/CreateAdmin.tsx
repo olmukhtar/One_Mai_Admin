@@ -25,6 +25,7 @@ import {
 import { Eye, EyeOff, ShieldAlert, Pencil, Trash2, Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
+import { API_BASE_URL } from "@/lib/constants";
 
 type UserRole = "admin" | "account" | "front_desk" | "customer_support" | "marketing";
 
@@ -38,7 +39,7 @@ interface AdminUser {
   createdAt: string;
 }
 
-const BASE = "https://test.joinonemai.com/api";
+const BASE = API_BASE_URL;
 const CREATE_ENDPOINT = `${BASE}/admin/auth/create-admin`;
 const FETCH_ADMINS_ENDPOINT = `${BASE}/admin/fetch-admins`;
 const UPDATE_ENDPOINT = (id: string) => `${BASE}/admin/update-admins/${id}`;

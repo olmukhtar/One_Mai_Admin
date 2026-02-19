@@ -10,6 +10,7 @@ import { StatusBadge } from "@/components/admin/StatusBadge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Copy, Mail, Phone, Shield, ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
 import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
+import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/constants";
 
 // --- Types ---
 
@@ -86,7 +87,7 @@ type UserRole = "admin" | "account" | "front_desk" | "customer_support";
 
 // --- Constants & Helpers ---
 
-const BASE_URL = "https://test.joinonemai.com/api";
+const BASE_URL = API_BASE_URL;
 const SHOW_URL = (id: string) => `${BASE_URL}/admin/users/${id}`;
 const APPROVE_AFFILIATE_URL = (id: string) => `${BASE_URL}/admin/users/${id}/approve-affiliate`;
 
@@ -221,7 +222,7 @@ export default function UserDetails() {
             <CardContent className="space-y-4">
               <div className="flex items-center gap-4">
                 <img
-                  src={u?.image || `https://api.dicebear.com/7.x/initials/svg?seed=${u?.email}`}
+                  src={u?.image ? `${IMAGE_BASE_URL}${u.image}` : `https://api.dicebear.com/7.x/initials/svg?seed=${u?.email}`}
                   className="h-16 w-16 rounded-full border"
                   alt="Avatar"
                 />

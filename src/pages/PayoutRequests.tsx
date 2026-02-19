@@ -39,8 +39,9 @@ type ApiResponse = {
 type UserRole = "admin" | "account" | "front_desk" | "customer_support";
 
 import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
+import { API_BASE_URL } from "@/lib/constants";
 
-const BASE = "https://test.joinonemai.com/api";
+const BASE = API_BASE_URL;
 const ENDPOINT = `${BASE}/admin/payout-requests`;
 const STATUS_ENDPOINT = `${BASE}/admin/payout-requests/status`;
 

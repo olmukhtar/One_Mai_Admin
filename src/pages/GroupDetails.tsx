@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/admin/StatusBadge";
 import { Shield, ArrowLeft } from "lucide-react";
 
 import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
+import { API_BASE_URL } from "@/lib/constants";
 
 type Group = {
   _id: string;
@@ -49,7 +50,7 @@ type GroupShowResponse = {
   payouts: any[];
 };
 
-const BASE = "https://test.joinonemai.com/api";
+const BASE = API_BASE_URL;
 const SHOW_URL = (id: string) => `${BASE}/admin/groups/${id}`;
 
 function useToken() {
