@@ -92,10 +92,10 @@ const SHOW_URL = (id: string) => `${BASE_URL}/admin/users/${id}`;
 const APPROVE_AFFILIATE_URL = (id: string) => `${BASE_URL}/admin/users/${id}/approve-affiliate`;
 
 function fmtCurrency(n?: number) {
-  if (!n && n !== 0) return "€0";
-  return new Intl.NumberFormat("de-DE", {
+  if (!n && n !== 0) return "₦0";
+  return new Intl.NumberFormat("en-NG", {
     style: "currency",
-    currency: "EUR",
+    currency: "NGN",
     maximumFractionDigits: 0,
   }).format(n);
 }

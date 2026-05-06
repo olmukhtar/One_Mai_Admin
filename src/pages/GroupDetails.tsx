@@ -70,11 +70,11 @@ function ngn(n: number) {
   try {
     return new Intl.NumberFormat("en-NG", {
       style: "currency",
-      currency: "EUR",
+      currency: "NGN",
       maximumFractionDigits: 0,
     }).format(n);
   } catch {
-    return `€${Math.round(n).toLocaleString()}`;
+    return `₦${Math.round(n).toLocaleString()}`;
   }
 }
 

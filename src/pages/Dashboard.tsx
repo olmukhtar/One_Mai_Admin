@@ -81,15 +81,15 @@ function useUserRole(): UserRole | null {
   }, []);
 }
 
-function formatEuro(n: number) {
+function formatNgn(n: number) {
   try {
-    return new Intl.NumberFormat("de-DE", {
+    return new Intl.NumberFormat("en-NG", {
       style: "currency",
-      currency: "EUR",
+      currency: "NGN",
       maximumFractionDigits: 0,
     }).format(n);
   } catch {
-    return `€${Math.round(n).toLocaleString()}`;
+    return `₦${Math.round(n).toLocaleString()}`;
   }
 }
 
@@ -124,13 +124,13 @@ function KPIs({ data, role }: { data: StatsResponse["stats"] | null; role: UserR
     },
     {
       title: "Txn Value",
-      value: data ? formatEuro(data.totalTransactionValue) : "—",
+      value: data ? formatNgn(data.totalTransactionValue) : "—",
       icon: ArrowUpRight,
       visible: canSeeFinancials
     },
     {
       title: "Revenue",
-      value: data ? formatEuro(data.platformRevenue) : "—",
+      value: data ? formatNgn(data.platformRevenue) : "—",
       icon: ArrowUpRight,
       visible: canSeeFinancials
     },
@@ -235,7 +235,7 @@ function TransactionsTable({
                         {t.status}
                       </span>
                     </td>
-                    {showFullAmounts && <td className="py-2 pr-4">{formatEuro(t.amount)}</td>}
+                    {showFullAmounts && <td className="py-2 pr-4">{formatNgn(t.amount)}</td>}
                     <td className="py-2 pr-4">
                       {new Date(t.createdAt).toLocaleString("en-NG", {
                         year: "numeric",
@@ -316,7 +316,7 @@ function ContributionsChart({
               <Tooltip
                 cursor={{ stroke: "#CBD5E1" }}
                 contentStyle={{ borderRadius: 8, border: "1px solid #E5E7EB" }}
-                formatter={(v: any) => [formatEuro(Number(v)), "Amount"]}
+                formatter={(v: any) => [formatNgn(Number(v)), "Amount"]}
                 labelFormatter={(l) =>
                   new Date(l).toLocaleDateString("en-NG", {
                     year: "numeric",
@@ -392,11 +392,11 @@ function SummaryCard({
         </div>
         <div className="flex justify-between">
           <span>Total Transaction Value</span>
-          <span>{formatEuro(data?.totalTransactionValue ?? 0)}</span>
+          <span>{formatNgn(data?.totalTransactionValue ?? 0)}</span>
         </div>
         <div className="flex justify-between">
           <span>Platform Revenue</span>
-          <span>{formatEuro(data?.platformRevenue ?? 0)}</span>
+          <span>{formatNgn(data?.platformRevenue ?? 0)}</span>
         </div>
       </CardContent>
     </Card>

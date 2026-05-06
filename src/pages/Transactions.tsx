@@ -66,11 +66,11 @@ function useUserRole(): UserRole | null {
   }, []);
 }
 
-function eur(n: number) {
+function ngn(n: number) {
   try {
-    return new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
+    return new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(n);
   } catch {
-    return `€${Math.round(n).toLocaleString()}`;
+    return `₦${Math.round(n).toLocaleString()}`;
   }
 }
 
@@ -189,7 +189,7 @@ export default function Transactions() {
       ),
     },
     { key: "paymentMethod", label: "Method", render: (v: string) => v || "—" },
-    { key: "amount", label: "Amount", render: (v: number) => eur(v) },
+    { key: "amount", label: "Amount", render: (v: number) => ngn(v) },
     {
       key: "route",
       label: "Route",

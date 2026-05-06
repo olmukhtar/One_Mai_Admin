@@ -70,15 +70,15 @@ function useUserRole(): UserRole | null {
   }, []);
 }
 
-function eur(n: number) {
+function ngn(n: number) {
   try {
-    return new Intl.NumberFormat("de-DE", {
+    return new Intl.NumberFormat("en-NG", {
       style: "currency",
-      currency: "EUR",
+      currency: "NGN",
       maximumFractionDigits: 0,
     }).format(n);
   } catch {
-    return `€${Math.round(n).toLocaleString()}`;
+    return `₦${Math.round(n).toLocaleString()}`;
   }
 }
 
@@ -302,7 +302,7 @@ export default function PayoutRequests() {
         );
       },
     },
-    { key: "amount", label: "Amount", render: (v: number) => eur(v) },
+    { key: "amount", label: "Amount", render: (v: number) => ngn(v) },
     { key: "status", label: "Status", render: (v: string) => <StatusBadge status={v} /> },
     {
       key: "createdAt",
@@ -475,7 +475,7 @@ export default function PayoutRequests() {
             </h3>
             <p className="text-sm text-slate-600 mb-4">
               Are you sure you want to {confirmAction.status === "completed" ? "approve" : "reject"} this
-              payout request for {eur(confirmAction.amount)}?
+              payout request for {ngn(confirmAction.amount)}?
             </p>
 
             {updateError && (

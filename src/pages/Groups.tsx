@@ -63,15 +63,15 @@ function useToken() {
   }, []);
 }
 
-function eur(n: number) {
+function ngn(n: number) {
   try {
-    return new Intl.NumberFormat("de-DE", {
+    return new Intl.NumberFormat("en-NG", {
       style: "currency",
-      currency: "EUR",
+      currency: "NGN",
       maximumFractionDigits: 0,
     }).format(n);
   } catch {
-    return `€${Math.round(n).toLocaleString()}`;
+    return `₦${Math.round(n).toLocaleString()}`;
   }
 }
 
@@ -288,7 +288,7 @@ export default function Groups() {
                           </Link>
                         </td>
                         <td className="py-2 pr-4">{g.admin?.email || "—"}</td>
-                        <td className="py-2 pr-4">{eur(g.savingsAmount)}</td>
+                        <td className="py-2 pr-4">{ngn(g.savingsAmount)}</td>
                         <td className="py-2 pr-4 capitalize">{g.frequency}</td>
                         <td className="py-2 pr-4">
                           {g.nextPayoutDate
