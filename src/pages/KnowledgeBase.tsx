@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,6 +49,7 @@ interface KnowledgeBaseResponse {
 
 export default function KnowledgeBase() {
     const { toast } = useToast();
+    const navigate = useNavigate();
     const [items, setItems] = useState<KnowledgeBaseItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -288,6 +290,26 @@ export default function KnowledgeBase() {
                         Add Item
                     </Button>
                 </div>
+
+                <Card className="border border-blue-100 bg-blue-50 shadow-sm rounded-xl">
+                    <CardContent className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <p className="text-sm font-semibold text-slate-900">
+                                Looking for something else?
+                            </p>
+                            <p className="mt-1 text-sm text-slate-600">
+                                If the answer is not in the FAQ, contact support to get help from the team.
+                            </p>
+                        </div>
+                        <Button
+                            type="button"
+                            onClick={() => navigate("/support")}
+                            className="bg-gradient-to-r from-[#1766a4] to-[#207EC4] hover:from-[#155a8a] hover:to-[#1a6ba8] text-white"
+                        >
+                            Contact Support
+                        </Button>
+                    </CardContent>
+                </Card>
 
                 {/* Items List */}
                 {loading ? (

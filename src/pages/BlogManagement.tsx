@@ -18,6 +18,12 @@ import { useNavigate } from "react-router-dom";
 import { apiFetch } from "@/lib/api";
 import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/constants";
 
+function resolveImageUrl(path?: string) {
+  if (!path) return "";
+  if (/^(https?:)?\/\//i.test(path) || path.startsWith("data:")) return path;
+  return `${IMAGE_BASE_URL}/${path.replace(/^\/+/, "")}`;
+}
+
 interface BlogPost {
   _id: string;
   image: string;
@@ -233,7 +239,7 @@ export default function BlogManagement() {
                 {post.image && (
                   <div className="relative h-48 bg-slate-100 overflow-hidden">
                     <img
-                      src={`${IMAGE_BASE_URL}/${post.image}`}
+                      src={resolveImageUrl(post.image)}
                       alt={post.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
@@ -349,7 +355,7 @@ export default function BlogManagement() {
               {selectedPost?.image && (
                 <div className="relative w-full h-64 bg-slate-100 rounded-lg overflow-hidden">
                   <img
-                    src={`${IMAGE_BASE_URL}/${selectedPost.image}`}
+                    src={resolveImageUrl(selectedPost.image)}
                     alt={selectedPost.title}
                     className="w-full h-full object-cover"
                   />

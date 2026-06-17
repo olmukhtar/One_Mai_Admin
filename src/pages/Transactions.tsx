@@ -8,6 +8,12 @@ import { StatusBadge } from "@/components/admin/StatusBadge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ShieldAlert } from "lucide-react";
 
 import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
@@ -16,17 +22,24 @@ import { API_BASE_URL } from "@/lib/constants";
 type Transaction = {
   _id: string;
   reference: string;
-  fromEntity: string;
-  fromType: string;
-  toEntity: string;
-  toType: string;
+  user?: {
+    _id: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+  };
+  groupId?: string;
+  cycle?: number;
   amount: number;
-  type: "contribution" | "payout" | string;
+  currency?: string;
+  type: "contribute" | "group_payout" | "payout" | string;
   status: "completed" | "pending" | "failed" | string;
   paymentMethod?: string;
+  provider?: string;
   metadata?: Record<string, any>;
   createdAt: string;
   updatedAt: string;
+  amountFormatted?: string;
 };
 
 type TxnResponse = {
@@ -74,6 +87,38 @@ function ngn(n: number) {
   }
 }
 
+function userLabel(row: Transaction) {
+  const u = row.user;
+  if (!u) return "—";
+  const name = [u.firstName, u.lastName].filter(Boolean).join(" ").trim();
+  return name || u.email || "—";
+}
+
+// The API doesn't return explicit from/to fields - derive the money route
+// from the transaction `type` instead (contribute = user -> group,
+// group_payout = group -> user, payout = user wallet -> external bank).
+function getRoute(row: Transaction): {
+  from: string;
+  fromLink?: string;
+  to: string;
+  toLink?: string;
+} {
+  const user = userLabel(row);
+  const userLink = row.user?._id ? `/users/${row.user._id}` : undefined;
+  const groupLink = row.groupId ? `/groups/${row.groupId}` : undefined;
+
+  if (row.type === "contribute") {
+    return { from: user, fromLink: userLink, to: "Group", toLink: groupLink };
+  }
+  if (row.type === "group_payout") {
+    return { from: "Group", fromLink: groupLink, to: user, toLink: userLink };
+  }
+  if (row.type === "payout") {
+    return { from: user, fromLink: userLink, to: "Bank Account" };
+  }
+  return { from: user, fromLink: userLink, to: "—" };
+}
+
 export default function Transactions() {
   const token = useToken();
   const role = useUserRole();
@@ -86,6 +131,7 @@ export default function Transactions() {
   const [data, setData] = useState<TxnResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [selectedTxn, setSelectedTxn] = useState<Transaction | null>(null);
 
   // Permission checks based on roles
   // getAllTransactions: admin (full), account (full), customer_support (view only), front_desk (no access)
@@ -193,21 +239,21 @@ export default function Transactions() {
     {
       key: "route",
       label: "Route",
-      render: (_: any, row: Transaction) => (
-        <div className="text-xs">
-          <div className="text-slate-500">from</div>
-          <div className="font-mono">{row.fromType}:{row.fromEntity}</div>
-          <div className="text-slate-500">to</div>
-          <div className="font-mono">
-            {row.toType}:{row.toEntity}
-            {row.toType === "group" && (
-              <Button asChild size="sm" variant="link" className="px-1">
-                <Link to={`/groups/${row.toEntity}`}>view</Link>
-              </Button>
-            )}
+      render: (_: any, row: Transaction) => {
+        const route = getRoute(row);
+        return (
+          <div className="text-xs">
+            <div className="text-slate-500">from</div>
+            <div className="font-medium">
+              {route.fromLink ? <Link to={route.fromLink} className="hover:underline">{route.from}</Link> : route.from}
+            </div>
+            <div className="text-slate-500 mt-1">to</div>
+            <div className="font-medium">
+              {route.toLink ? <Link to={route.toLink} className="hover:underline">{route.to}</Link> : route.to}
+            </div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       key: "createdAt",
@@ -223,9 +269,11 @@ export default function Transactions() {
     },
   ];
 
-  const actionItems = isViewOnly ? [] : [
-    { label: "View Details", onClick: (row: Transaction) => console.log("View", row._id) },
-    { label: "Flag Transaction", onClick: (row: Transaction) => console.log("Flag", row._id) },
+  const actionItems = [
+    { label: "View Details", onClick: (row: Transaction) => setSelectedTxn(row) },
+    ...(isViewOnly ? [] : [
+      { label: "Flag Transaction", onClick: (row: Transaction) => console.log("Flag", row._id) },
+    ]),
   ];
 
   return (
@@ -289,6 +337,85 @@ export default function Transactions() {
           onPageChange={(newPage) => setPage(newPage)}
           loading={loading}
         />
+
+        <Dialog open={!!selectedTxn} onOpenChange={(open) => !open && setSelectedTxn(null)}>
+          <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="font-mono text-sm">{selectedTxn?.reference}</DialogTitle>
+            </DialogHeader>
+            {selectedTxn && (
+              <div className="space-y-4 text-sm">
+                <dl className="grid grid-cols-2 gap-y-3 gap-x-4">
+                  <dt className="text-slate-500">Type</dt>
+                  <dd><StatusBadge status={selectedTxn.type} /></dd>
+
+                  <dt className="text-slate-500">Status</dt>
+                  <dd>
+                    <StatusBadge
+                      status={selectedTxn.status === "completed" ? "Successful" : selectedTxn.status.charAt(0).toUpperCase() + selectedTxn.status.slice(1)}
+                    />
+                  </dd>
+
+                  <dt className="text-slate-500">Amount</dt>
+                  <dd className="font-medium">{ngn(selectedTxn.amount)} {selectedTxn.currency && selectedTxn.currency !== "NGN" ? `(${selectedTxn.currency})` : ""}</dd>
+
+                  <dt className="text-slate-500">Method</dt>
+                  <dd>{selectedTxn.paymentMethod || "—"}{selectedTxn.provider ? ` via ${selectedTxn.provider}` : ""}</dd>
+
+                  <dt className="text-slate-500">From</dt>
+                  <dd>
+                    {(() => {
+                      const r = getRoute(selectedTxn);
+                      return r.fromLink ? <Link to={r.fromLink} className="hover:underline">{r.from}</Link> : r.from;
+                    })()}
+                  </dd>
+
+                  <dt className="text-slate-500">To</dt>
+                  <dd>
+                    {(() => {
+                      const r = getRoute(selectedTxn);
+                      return r.toLink ? <Link to={r.toLink} className="hover:underline">{r.to}</Link> : r.to;
+                    })()}
+                  </dd>
+
+                  {selectedTxn.user && (
+                    <>
+                      <dt className="text-slate-500">User</dt>
+                      <dd>{userLabel(selectedTxn)} {selectedTxn.user.email ? `(${selectedTxn.user.email})` : ""}</dd>
+                    </>
+                  )}
+
+                  {selectedTxn.groupId && (
+                    <>
+                      <dt className="text-slate-500">Group</dt>
+                      <dd>
+                        <Link to={`/groups/${selectedTxn.groupId}`} className="hover:underline font-mono text-xs">
+                          {selectedTxn.groupId}
+                        </Link>
+                        {typeof selectedTxn.cycle === "number" && <span className="text-slate-500"> · cycle {selectedTxn.cycle}</span>}
+                      </dd>
+                    </>
+                  )}
+
+                  <dt className="text-slate-500">Created</dt>
+                  <dd>{new Date(selectedTxn.createdAt).toLocaleString("en-NG")}</dd>
+
+                  <dt className="text-slate-500">Updated</dt>
+                  <dd>{new Date(selectedTxn.updatedAt).toLocaleString("en-NG")}</dd>
+                </dl>
+
+                {selectedTxn.metadata && Object.keys(selectedTxn.metadata).length > 0 && (
+                  <div>
+                    <div className="text-slate-500 mb-1">Metadata</div>
+                    <pre className="text-xs bg-slate-50 border border-slate-100 rounded p-3 overflow-x-auto whitespace-pre-wrap">
+                      {JSON.stringify(selectedTxn.metadata, null, 2)}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </AdminLayout>
   );
