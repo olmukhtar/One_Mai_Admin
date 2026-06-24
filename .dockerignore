@@ -23,7 +23,6 @@ out
 # Docker / Deployment configs (optional but good practice)
 Dockerfile
 .dockerignore
-nginx.conf
 cloudbuild.yaml
 
 # System / Cache files
