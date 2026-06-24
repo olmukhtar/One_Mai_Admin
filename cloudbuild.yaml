@@ -1,0 +1,82 @@
+# Google Cloud Build Configuration for One_Mai_Admin (React + Vite)
+# Containerized with Docker and Nginx, deploying to Google Cloud Run.
+# Reference: https://cloud.google.com/build/docs/configuring-builds/create-basic-configuration
+
+steps:
+  # =========================================================================
+  # 1. Ensure Artifact Registry Repository Exists
+  # =========================================================================
+  # Checks if the repository exists, and creates it if not.
+  # Note: The Cloud Build service account requires the 'Artifact Registry Administrator' role.
+  - name: 'gcr.io/cloud-builders/gcloud'
+    id: 'Create Artifact Registry Repository'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        gcloud artifacts repositories describe $_AR_REPOSITORY --location=$_AR_LOCATION || \
+        gcloud artifacts repositories create $_AR_REPOSITORY \
+          --repository-format=docker \
+          --location=$_AR_LOCATION \
+          --description="Docker repository created by Cloud Build"
+
+  # =========================================================================
+  # 2. Build the Docker Image
+  # =========================================================================
+  # Build the multi-stage Docker image and tag it with the commit SHA and 'latest'.
+  # Injects VITE_ environment variables as build arguments.
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'Build Docker Image'
+    args:
+      - 'build'
+      - '--build-arg'
+      - 'VITE_API_URL=$_VITE_API_URL'
+      - '--build-arg'
+      - 'VITE_IMAGE_BASE_URL=$_VITE_IMAGE_BASE_URL'
+      - '-t'
+      - '$_AR_LOCATION-docker.pkg.dev/$PROJECT_ID/$_AR_REPOSITORY/mai-admin:$COMMIT_SHA'
+      - '-t'
+      - '$_AR_LOCATION-docker.pkg.dev/$PROJECT_ID/$_AR_REPOSITORY/mai-admin:latest'
+      - '.'
+
+  # =========================================================================
+  # 3. Push the Docker Image to Artifact Registry
+  # =========================================================================
+  # Push the build image to Google Artifact Registry.
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'Push Docker Image'
+    args:
+      - 'push'
+      - '$_AR_LOCATION-docker.pkg.dev/$PROJECT_ID/$_AR_REPOSITORY/mai-admin'
+      - '--all-tags'
+
+  # =========================================================================
+  # 4. Deploy to Google Cloud Run
+  # =========================================================================
+  # Deploy the image from Artifact Registry to Google Cloud Run.
+  # Specifies --port=80 because Nginx inside the container is configured to listen on port 80.
+  - name: 'gcr.io/cloud-builders/gcloud'
+    id: 'Deploy to Cloud Run'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'mai-admin'
+      - '--image=$_AR_LOCATION-docker.pkg.dev/$PROJECT_ID/$_AR_REPOSITORY/mai-admin:$COMMIT_SHA'
+      - '--region=$_CLOUD_RUN_REGION'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--port=80'
+
+# =========================================================================
+# Default Substitutions (Variables that can be overridden in trigger settings)
+# =========================================================================
+substitutions:
+  _AR_LOCATION: 'us-central1'
+  _AR_REPOSITORY: 'mai-admin'
+  _CLOUD_RUN_REGION: 'us-central1'
+  _VITE_API_URL: 'https://test.joinonemai.com/api'
+  _VITE_IMAGE_BASE_URL: 'https://test.joinonemai.com'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: 'E2_HIGHCPU_8'       # Faster builds

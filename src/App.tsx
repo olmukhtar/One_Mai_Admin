@@ -36,6 +36,7 @@ import BlogManagement from "./pages/BlogManagement";
 import KnowledgeBase from "./pages/KnowledgeBase";
 import CreateBlog from "./pages/CreateBlog";
 import EditBlog from "./pages/EditBlog";
+import Monify from "./pages/Monify";
 
 const queryClient = new QueryClient();
 const AUTH_STORAGE_KEY = "admin_auth";
@@ -205,6 +206,14 @@ const App = () => (
               element={
                 <RequireAuth>
                   <Transactions />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/monify"
+              element={
+                <RequireAuth>
+                  <Monify />
                 </RequireAuth>
               }
             />
