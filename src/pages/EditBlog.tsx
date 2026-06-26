@@ -55,11 +55,12 @@ export default function EditBlog() {
         const fetchPost = async () => {
             try {
                 setLoading(true);
-                const response = await apiFetch(`${API_BASE_URL}/admin/fetch-posts`);
+                const response = await apiFetch(`${API_BASE_URL}/post`);
                 if (!response.ok) throw new Error("Failed to fetch posts");
 
-                const data = await response.json();
-                const foundPost = data.posts.find((p: BlogPost) => p._id === id);
+                const json = await response.json();
+                const responseData = json.data || json;
+                const foundPost = (responseData.posts || responseData || []).find((p: BlogPost) => p._id === id);
 
                 if (foundPost) {
                     setPost(foundPost);
@@ -169,7 +170,7 @@ export default function EditBlog() {
                 formDataToSend.append("image", formData.featuredImage);
             }
 
-            const response = await apiFetch(`${API_BASE_URL}/admin/update-post/${id}`, {
+            const response = await apiFetch(`${API_BASE_URL}/post/${id}`, {
                 method: "PUT",
                 body: formDataToSend,
             });

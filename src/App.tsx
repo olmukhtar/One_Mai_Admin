@@ -29,7 +29,7 @@ import Login from "./pages/Login";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
-import PayoutRequests from "./pages/PayoutRequests";
+
 import CreateAdmin from "./pages/CreateAdmin";
 import Resources from "./pages/Resources";
 import BlogManagement from "./pages/BlogManagement";
@@ -246,14 +246,6 @@ const App = () => (
               element={
                 <RequireAuth>
                   <EditBlog />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/payout-requests"
-              element={
-                <RequireAuth>
-                  <PayoutRequests />
                 </RequireAuth>
               }
             />

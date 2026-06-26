@@ -41,7 +41,7 @@ type SupportsResponse = {
 type UserRole = "admin" | "account" | "front_desk" | "customer_support";
 
 const BASE = API_BASE_URL;
-const SUPPORTS_URL = `${BASE}/admin/supports`;
+const SUPPORTS_URL = `${BASE}/support`;
 
 function useToken() {
   return useMemo(() => {
@@ -120,7 +120,14 @@ const Support = () => {
         }
         return r.json();
       })
-      .then((j: SupportsResponse) => setData(j))
+      .then((j: any) => {
+        const payload = j.data || j;
+        const supports = payload.supports || (Array.isArray(payload) ? payload : []);
+        setData({
+          supports,
+          message: j.message || payload.message || ""
+        });
+      })
       .catch((e: any) => {
         if (e.name !== "AbortError") {
           setErr(e?.message || "Failed to load support tickets");
@@ -174,13 +181,15 @@ const Support = () => {
       }
 
       const result = await response.json();
+      const payload = result.data || result;
+      const newMessages = payload.messages || (Array.isArray(payload) ? payload : null);
 
       // Update the ticket in the state
       if (data) {
         const updatedSupports = data.supports.map(ticket =>
           ticket._id === selectedTicket._id
             ? {
-              ...ticket, messages: result.messages || [...ticket.messages, {
+              ...ticket, messages: newMessages || [...ticket.messages, {
                 _id: Date.now().toString(),
                 sender: "admin",
                 message: replyMessage,
@@ -194,7 +203,7 @@ const Support = () => {
         setData({ ...data, supports: updatedSupports });
         setSelectedTicket(prev => prev ? {
           ...prev,
-          messages: result.messages || [...prev.messages, {
+          messages: newMessages || [...prev.messages, {
             _id: Date.now().toString(),
             sender: "admin",
             message: replyMessage,

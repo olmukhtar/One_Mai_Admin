@@ -441,7 +441,7 @@ export default function Dashboard() {
         }
         return res.json();
       })
-      .then((json: StatsResponse) => setData(json))
+      .then((json: any) => setData(json.data || json))
       .catch((e: any) => {
         if (e.name !== "AbortError") setErr(e?.message || "Failed to load stats");
       })

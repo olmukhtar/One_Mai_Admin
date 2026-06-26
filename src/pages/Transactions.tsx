@@ -52,7 +52,7 @@ type TxnResponse = {
 type UserRole = "admin" | "account" | "front_desk" | "customer_support";
 
 const BASE = API_BASE_URL;
-const URL_TXNS = `${BASE}/admin/transactions`;
+const URL_TXNS = `${BASE}/transaction/all`;
 
 function useToken() {
   return useMemo(() => {
@@ -172,7 +172,7 @@ export default function Transactions() {
         }
         return r.json();
       })
-      .then((j: TxnResponse) => setData(j))
+      .then((j: any) => setData(j.data || j))
       .catch((e: any) => {
         if (e.name !== "AbortError") setErr(e?.message || "Failed to load transactions");
       })

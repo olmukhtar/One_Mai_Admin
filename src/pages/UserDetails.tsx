@@ -89,7 +89,7 @@ type UserRole = "admin" | "account" | "front_desk" | "customer_support";
 
 const BASE_URL = API_BASE_URL;
 const SHOW_URL = (id: string) => `${BASE_URL}/admin/users/${id}`;
-const APPROVE_AFFILIATE_URL = (id: string) => `${BASE_URL}/admin/users/${id}/approve-affiliate`;
+const APPROVE_AFFILIATE_URL = (id: string) => `${BASE_URL}/user/${id}/approve-affiliate`;
 
 function fmtCurrency(n?: number) {
   if (!n && n !== 0) return "₦0";
@@ -152,7 +152,7 @@ export default function UserDetails() {
         if (!res.ok) throw new Error("Failed to load user data");
         return res.json();
       })
-      .then((json: ApiResponse) => setData(json))
+      .then((json: any) => setData(json.data || json))
       .catch((e) => e.name !== "AbortError" && setErr(e.message))
       .finally(() => setLoading(false));
 

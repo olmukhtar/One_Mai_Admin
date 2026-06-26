@@ -106,7 +106,7 @@ export default function CreateBlog() {
                 formDataToSend.append("image", formData.featuredImage);
             }
 
-            const response = await apiFetch(`${API_BASE_URL}/admin/create-post`, {
+            const response = await apiFetch(`${API_BASE_URL}/post`, {
                 method: "POST",
                 body: formDataToSend,
             });

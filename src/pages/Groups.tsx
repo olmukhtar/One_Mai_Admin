@@ -21,7 +21,22 @@ type GroupLite = {
   _id: string;
   name: string;
   description?: string;
-  admin: { _id: string; email: string };
+  admin?: { _id: string; email: string };
+  members?: Array<{
+    _id: string;
+    user?: {
+      _id: string;
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      image?: string;
+    };
+    role: string;
+    joinedAt: string;
+    isActive: boolean;
+    status: string;
+    payoutIndex: number;
+  }>;
   savingsAmount: number;
   frequency: "day" | "week" | "month" | string;
   nextPayoutDate?: string;
@@ -48,7 +63,7 @@ type GroupsResponse = {
 import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
 import { API_BASE_URL } from "@/lib/constants";
 
-const GROUPS_URL = `${API_BASE_URL}/admin/groups`;
+const GROUPS_URL = `${API_BASE_URL}/group/all`;
 
 function useToken() {
   return useMemo(() => {
@@ -140,7 +155,7 @@ export default function Groups() {
         }
         return r.json();
       })
-      .then((j: GroupsResponse) => setData(j))
+      .then((j: any) => setData(j.data || j))
       .catch((e: any) => {
         if (e.name !== "AbortError") setErr(e?.message || "Failed to load groups");
       })
@@ -287,7 +302,9 @@ export default function Groups() {
                             {g.name || "—"}
                           </Link>
                         </td>
-                        <td className="py-2 pr-4">{g.admin?.email || "—"}</td>
+                        <td className="py-2 pr-4">
+                          {g.admin?.email || g.members?.find((m) => m.role === "admin")?.user?.email || "—"}
+                        </td>
                         <td className="py-2 pr-4">{ngn(g.savingsAmount)}</td>
                         <td className="py-2 pr-4 capitalize">{g.frequency}</td>
                         <td className="py-2 pr-4">

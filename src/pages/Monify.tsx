@@ -57,8 +57,8 @@ type Transaction = {
 type APIResponse = {
   success: boolean;
   message: string;
-  data: Transaction[];
-  pagination: {
+  data: {
+    transactions: Transaction[];
     total: number;
     limit: number;
     offset: number;
@@ -178,7 +178,7 @@ export default function Monify() {
     url.searchParams.set("type", "payout");
     url.searchParams.set("limit", String(limit));
     url.searchParams.set("offset", String(offset));
-    
+
     if (status !== "all") {
       url.searchParams.set("status", status);
     }
@@ -189,13 +189,14 @@ export default function Monify() {
           let m = `Failed to load transactions: ${r.status}`;
           try {
             const j = await r.json();
+
             if (j?.message) m = `Failed to load transactions: ${j.message}`;
-          } catch {}
+          } catch { }
           throw new Error(m);
         }
         return r.json();
       })
-      .then((j: APIResponse) => {
+      .then((j: any) => {
         setData(j);
       })
       .catch((e: any) => {
@@ -249,9 +250,8 @@ export default function Monify() {
       </AdminLayout>
     );
   }
-
-  const rows = data?.data ?? [];
-  const total = data?.pagination?.total ?? 0;
+  const rows = data?.data?.transactions ?? [];
+  const total = data?.data?.total ?? 0;
   const totalPages = Math.ceil(total / limit) || 1;
   const currentPage = page;
 
@@ -541,7 +541,7 @@ export default function Monify() {
                 {/* Initiate Payout Action Section */}
                 <div className="border-t border-slate-100 pt-4 flex flex-col gap-3">
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Payout Action</h4>
-                  
+
                   {payoutError && (
                     <div className="text-xs text-red-600 bg-red-50 p-3 rounded-lg border border-red-100 flex items-center gap-2">
                       <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
@@ -559,18 +559,18 @@ export default function Monify() {
                         <dl className="grid grid-cols-2 gap-y-1 gap-x-2 mt-2 pt-2 border-t border-green-150 text-[11px] text-green-700">
                           <dt className="font-medium text-green-800">Status</dt>
                           <dd className="font-mono uppercase font-semibold">{payoutResult.data.data.status || "—"}</dd>
-                          
+
                           <dt className="font-medium text-green-800">Reference</dt>
                           <dd className="font-mono truncate">{payoutResult.data.data.reference || "—"}</dd>
-                          
+
                           <dt className="font-medium text-green-800">Bank Reference</dt>
                           <dd className="font-mono truncate">{payoutResult.data.data.transactionReference || "—"}</dd>
-                          
+
                           <dt className="font-medium text-green-800">Destination Account</dt>
                           <dd className="truncate">
                             {payoutResult.data.data.destinationAccountName} ({payoutResult.data.data.destinationAccountNumber})
                           </dd>
-                          
+
                           <dt className="font-medium text-green-800">Amount</dt>
                           <dd className="font-semibold">{formatAmount(payoutResult.data.data.amount, selectedTxn.currency)}</dd>
                         </dl>
@@ -598,6 +598,7 @@ export default function Monify() {
                     </Button>
                   )}
                 </div>
+
               </div>
             )}
           </DialogContent>

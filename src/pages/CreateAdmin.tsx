@@ -129,8 +129,9 @@ export default function CreateAdmin() {
         const roleRes = await apiFetch(ROLES_ENDPOINT);
         if (roleRes.ok) {
           const roleData = await roleRes.json();
-          if (roleData.roles && Array.isArray(roleData.roles)) {
-            setRoles(roleData.roles);
+          const rolesList = roleData.data?.roles || roleData.roles;
+          if (rolesList && Array.isArray(rolesList)) {
+            setRoles(rolesList);
           }
         }
 
@@ -138,8 +139,8 @@ export default function CreateAdmin() {
         const adminRes = await apiFetch(FETCH_ADMINS_ENDPOINT);
         if (adminRes.ok) {
           const adminData = await adminRes.json();
-          // Adjust based on actual response structure: could be data.admins or data directly
-          const list = adminData.admins || adminData || [];
+          const actualData = adminData.data || adminData;
+          const list = actualData.admins || actualData || [];
           if (Array.isArray(list)) {
             setAdmins(list);
           }
@@ -161,7 +162,8 @@ export default function CreateAdmin() {
       const adminRes = await apiFetch(FETCH_ADMINS_ENDPOINT);
       if (adminRes.ok) {
         const adminData = await adminRes.json();
-        const list = adminData.admins || adminData || [];
+        const actualData = adminData.data || adminData;
+        const list = actualData.admins || actualData || [];
         if (Array.isArray(list)) {
           setAdmins(list);
         }

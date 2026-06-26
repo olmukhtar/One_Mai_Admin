@@ -63,7 +63,7 @@ export default function BlogManagement() {
   const fetchPosts = async () => {
     try {
       setLoading(true);
-      const url = new URL(`${API_BASE_URL}/admin/fetch-posts`);
+      const url = new URL(`${API_BASE_URL}/post`);
       if (debouncedSearch) {
         url.searchParams.set("search", debouncedSearch);
       }
@@ -76,8 +76,9 @@ export default function BlogManagement() {
         throw new Error("Failed to fetch posts");
       }
 
-      const data: BlogResponse = await response.json();
-      setPosts(data.posts || []);
+      const json = await response.json();
+      const responseData = json.data || json;
+      setPosts(responseData.posts || responseData || []);
     } catch (error) {
       toast({
         title: "Error",
@@ -99,7 +100,7 @@ export default function BlogManagement() {
 
     try {
       setLoading(true);
-      const response = await apiFetch(`${API_BASE_URL}/admin/delete-post/${id}`, {
+      const response = await apiFetch(`${API_BASE_URL}/post/${id}`, {
         method: "DELETE",
       });
 

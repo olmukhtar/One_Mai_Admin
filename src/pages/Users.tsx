@@ -156,12 +156,13 @@ export default function Users() {
         }
         return res.json();
       })
-      .then((json: UsersResponse) => {
-        setData(json);
-        setAllUsers(json.users);
+      .then((json: any) => {
+        const responseData = json.data || json;
+        setData(responseData);
+        setAllUsers(responseData.users || []);
 
         // If API returns a different page (e.g. if we asked for 100 but only 50 exist), sync it
-        const actualPage = json.currentPage || pageNum;
+        const actualPage = responseData.currentPage || pageNum;
         if (actualPage !== page) {
           setPage(actualPage);
           setSearchParams(prev => {

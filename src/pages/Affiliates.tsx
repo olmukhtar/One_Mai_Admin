@@ -157,12 +157,13 @@ export default function Affiliates() {
         }
         return res.json();
       })
-      .then((json: UsersResponse) => {
-        setData(json);
-        setAllUsers(json.users);
+      .then((json: any) => {
+        const responseData = json.data || json;
+        setData(responseData);
+        setAllUsers(responseData.users || []);
 
         // Use API returned page if different
-        const actualPage = json.currentPage || pageNum;
+        const actualPage = responseData.currentPage || pageNum;
         if (actualPage !== page) {
           setPage(actualPage);
           setSearchParams(prev => {

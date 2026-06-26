@@ -14,7 +14,22 @@ type Group = {
   _id: string;
   name: string;
   description?: string;
-  admin: { _id: string; email: string };
+  admin?: { _id: string; email: string };
+  members?: Array<{
+    _id: string;
+    user?: {
+      _id: string;
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      image?: string;
+    };
+    role: string;
+    joinedAt: string;
+    isActive: boolean;
+    status: string;
+    payoutIndex: number;
+  }>;
   savingsAmount: number;
   frequency: string;
   nextPayoutDate?: string;
@@ -51,7 +66,7 @@ type GroupShowResponse = {
 };
 
 const BASE = API_BASE_URL;
-const SHOW_URL = (id: string) => `${BASE}/admin/groups/${id}`;
+const SHOW_URL = (id: string) => `${BASE}/group/all/${id}`;
 
 function useToken() {
   return useMemo(() => {
@@ -116,7 +131,19 @@ export default function GroupDetails() {
         }
         return r.json();
       })
-      .then((j: GroupShowResponse) => setData(j))
+      .then((j: any) => {
+        if (j && j.success && j.data) {
+          const groupData = j.data;
+          setData({
+            group: groupData,
+            members: groupData.members || [],
+            contributions: groupData.contributions || [],
+            payouts: groupData.payouts || [],
+          });
+        } else {
+          setData(j);
+        }
+      })
       .catch((e: any) => {
         if (e.name !== "AbortError") setErr(e?.message || "Failed to load group");
       })
@@ -171,7 +198,9 @@ export default function GroupDetails() {
                 </div>
                 <div>
                   <div className="text-slate-500">Admin</div>
-                  <div className="font-mono text-xs">{g.admin?.email}</div>
+                  <div className="font-mono text-xs">
+                    {g.admin?.email || g.members?.find((m) => m.role === "admin")?.user?.email || "—"}
+                  </div>
                 </div>
                 <div>
                   <div className="text-slate-500">Savings Amount</div>

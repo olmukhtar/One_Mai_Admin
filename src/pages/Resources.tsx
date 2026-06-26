@@ -38,10 +38,10 @@ type ResourcesResponse = {
 type UserRole = "admin" | "account" | "front_desk" | "customer_support";
 
 const BASE = API_BASE_URL;
-const RESOURCES_URL = `${BASE}/admin/fetch-resource`;
-const ADD_RESOURCE_URL = `${BASE}/admin/add-resource`;
-const DELETE_RESOURCE_URL = `${BASE}/admin/delete-resource`;
-const UPDATE_RESOURCE_URL = `${BASE}/admin/update-resource-status`;
+const RESOURCES_URL = `${BASE}/resource`;
+const ADD_RESOURCE_URL = `${BASE}/resource`;
+const DELETE_RESOURCE_URL = `${BASE}/resource`;
+const UPDATE_RESOURCE_URL = `${BASE}/resource`;
 
 function useToken() {
   return useMemo(() => {
@@ -136,7 +136,7 @@ const Resources = () => {
         }
         return r.json();
       })
-      .then((j: ResourcesResponse) => setData(j))
+      .then((j: any) => setData(j.data || j))
       .catch((e: any) => {
         if (e.name !== "AbortError") {
           setErr(e?.message || "Failed to load resources");
@@ -255,7 +255,7 @@ const Resources = () => {
     if (!canManage) return;
 
     try {
-      const response = await apiFetch(`${UPDATE_RESOURCE_URL}/${resourceId}`, {
+      const response = await apiFetch(`${UPDATE_RESOURCE_URL}/${resourceId}/status`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

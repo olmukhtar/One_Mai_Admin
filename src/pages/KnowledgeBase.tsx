@@ -72,7 +72,7 @@ export default function KnowledgeBase() {
 
         try {
             setLoading(true);
-            const response = await apiFetch(`${API_BASE_URL}/admin/knowledge-base`, {
+            const response = await apiFetch(`${API_BASE_URL}/knowledge-base`, {
                 method: "GET",
             });
 
@@ -118,7 +118,7 @@ export default function KnowledgeBase() {
 
         try {
             setSubmitting(true);
-            const response = await apiFetch(`${API_BASE_URL}/admin/knowledge-base`, {
+            const response = await apiFetch(`${API_BASE_URL}/knowledge-base`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -167,7 +167,7 @@ export default function KnowledgeBase() {
         try {
             setSubmitting(true);
             const response = await apiFetch(
-                `${API_BASE_URL}/admin/knowledge-base/${selectedItem._id}`,
+                `${API_BASE_URL}/knowledge-base/${selectedItem._id}`,
                 {
                     method: "PUT",
                     headers: {
@@ -209,7 +209,7 @@ export default function KnowledgeBase() {
         try {
             setSubmitting(true);
             const response = await apiFetch(
-                `${API_BASE_URL}/admin/knowledge-base/${selectedItem._id}`,
+                `${API_BASE_URL}/knowledge-base/${selectedItem._id}`,
                 {
                     method: "DELETE",
                 }

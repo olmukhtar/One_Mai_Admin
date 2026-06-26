@@ -74,8 +74,8 @@ substitutions:
   _AR_LOCATION: 'us-central1'
   _AR_REPOSITORY: 'mai-admin'
   _CLOUD_RUN_REGION: 'us-central1'
-  _VITE_API_URL: 'https://test.joinonemai.com/api'
-  _VITE_IMAGE_BASE_URL: 'https://test.joinonemai.com'
+  _VITE_API_URL: 'https://api.joinonemai.com/api'
+  _VITE_IMAGE_BASE_URL: 'https://api.joinonemai.com'
 
 options:
   logging: CLOUD_LOGGING_ONLY

@@ -72,7 +72,8 @@ export default function Login() {
         return;
       }
 
-      const data = await res.json();
+      const response = await res.json();
+      const data = response.data;
       // Expected response:
       // {
       //   message: "Login successful",

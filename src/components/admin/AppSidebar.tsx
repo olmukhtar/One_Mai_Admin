@@ -29,7 +29,6 @@ const mainItems = [
   { title: "Groups", url: "/groups", icon: Users2, roles: ["Admin", "Account", "Front Desk", "Customer Support"] },
   { title: "Affiliates", url: "/affiliates", icon: UserCheck, roles: ["Admin", "Account"] },
   { title: "Transactions", url: "/transactions", icon: CreditCard, roles: ["Admin", "Account", "Customer Support"] },
-  { title: "Payout Requests", url: "/payout-requests", icon: Wallet, roles: ["Admin", "Account", "Customer Support"] },
   { title: "Monify Payouts", url: "/monify", icon: Wallet, roles: ["Admin", "Account"] },
   { title: "Resources", url: "/resources", icon: Folder, roles: ["Admin", "Account", "Front Desk", "Customer Support", "Marketing"] },
   { title: "Blog", url: "/blog", icon: BookOpen, roles: ["Admin", "Account", "Marketing"] },
