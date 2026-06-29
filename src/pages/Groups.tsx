@@ -90,6 +90,22 @@ function ngn(n: number) {
   }
 }
 
+function getFrequencyLabel(frequency: string) {
+  if (!frequency) return "";
+  
+  const freq = frequency.toLowerCase();
+  const freqMap: Record<string, string> = {
+    'day': 'Daily',
+    'daily': 'Daily',
+    'week': 'Weekly',
+    'weekly': 'Weekly',
+    'month': 'Monthly',
+    'monthly': 'Monthly',
+  };
+  
+  return freqMap[freq] || frequency;
+}
+
 export default function Groups() {
   const token = useToken();
   const navigate = useNavigate();
@@ -306,7 +322,7 @@ export default function Groups() {
                           {g.admin?.email || g.members?.find((m) => m.role === "admin")?.user?.email || "—"}
                         </td>
                         <td className="py-2 pr-4">{ngn(g.savingsAmount)}</td>
-                        <td className="py-2 pr-4 capitalize">{g.frequency}</td>
+                        <td className="py-2 pr-4">{getFrequencyLabel(g.frequency)}</td>
                         <td className="py-2 pr-4">
                           {g.nextPayoutDate
                             ? new Date(g.nextPayoutDate).toLocaleDateString("en-NG", {

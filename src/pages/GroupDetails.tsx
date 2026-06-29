@@ -93,6 +93,22 @@ function ngn(n: number) {
   }
 }
 
+function getFrequencyLabel(frequency: string) {
+  if (!frequency) return "";
+  
+  const freq = frequency.toLowerCase();
+  const freqMap: Record<string, string> = {
+    'day': 'Daily',
+    'daily': 'Daily',
+    'week': 'Weekly',
+    'weekly': 'Weekly',
+    'month': 'Monthly',
+    'monthly': 'Monthly',
+  };
+  
+  return freqMap[freq] || frequency;
+}
+
 export default function GroupDetails() {
   const { id = "" } = useParams();
   const token = useToken();
@@ -208,7 +224,7 @@ export default function GroupDetails() {
                 </div>
                 <div>
                   <div className="text-slate-500">Frequency</div>
-                  <div className="capitalize">{g.frequency}</div>
+                  <div>{getFrequencyLabel(g.frequency)}</div>
                 </div>
                 <div>
                   <div className="text-slate-500">Status</div>
