@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useState, useMemo } from "react";
 
 interface Column {
@@ -27,7 +28,12 @@ interface DataTableProps {
   columns: Column[];
   data: any[];
   showActions?: boolean;
-  actionItems?: Array<{ label: string; onClick: (row: any) => void }>;
+  actionItems?: Array<{
+    label: string;
+    onClick: (row: any) => void;
+    show?: (row: any) => boolean;
+    disabled?: (row: any) => boolean;
+  }>;
   currentPage?: number;
   totalPages?: number;
   totalEntries?: number;
@@ -36,6 +42,12 @@ interface DataTableProps {
   onSearch?: (query: string) => void;
   loading?: boolean;
   searchableFields?: string[];
+  // Selection
+  selectable?: boolean;
+  selectedIds?: string[];
+  onSelectedIdsChange?: (ids: string[]) => void;
+  isRowSelectable?: (row: any) => boolean;
+  getRowId?: (row: any) => string;
 }
 
 export function DataTable({
@@ -54,6 +66,12 @@ export function DataTable({
   onSearch,
   loading = false,
   searchableFields = [],
+  // Selection
+  selectable = false,
+  selectedIds = [],
+  onSelectedIdsChange = () => {},
+  isRowSelectable,
+  getRowId,
 }: DataTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -91,6 +109,37 @@ export function DataTable({
   const endEntry = Math.min(currentPage * 10, totalEntries);
   const displayData = onSearch ? data : filteredData;
   const displayTotalEntries = onSearch ? totalEntries : displayData.length;
+
+  const selectableOnPage = useMemo(() => {
+    return displayData.filter(row => !isRowSelectable || isRowSelectable(row));
+  }, [displayData, isRowSelectable]);
+
+  const isAllSelected = useMemo(() => {
+    if (selectableOnPage.length === 0) return false;
+    return selectableOnPage.every(row => {
+      const rowId = getRowId ? getRowId(row) : (row._id || row.id || "");
+      return selectedIds.includes(rowId);
+    });
+  }, [selectableOnPage, selectedIds, getRowId]);
+
+  const handleSelectAll = (checked: boolean) => {
+    const pageIds = selectableOnPage.map(row => getRowId ? getRowId(row) : (row._id || row.id || ""));
+    if (checked) {
+      const newSelectedIds = [...selectedIds, ...pageIds.filter(id => !selectedIds.includes(id))];
+      onSelectedIdsChange(newSelectedIds);
+    } else {
+      const newSelectedIds = selectedIds.filter(id => !pageIds.includes(id));
+      onSelectedIdsChange(newSelectedIds);
+    }
+  };
+
+  const handleSelectRow = (rowId: string, checked: boolean) => {
+    if (checked) {
+      onSelectedIdsChange([...selectedIds, rowId]);
+    } else {
+      onSelectedIdsChange(selectedIds.filter(id => id !== rowId));
+    }
+  };
 
   // Generate page numbers to display
   const getPageNumbers = () => {
@@ -148,6 +197,14 @@ export function DataTable({
         <Table>
           <TableHeader>
             <TableRow>
+              {selectable && (
+                <TableHead className="w-[50px] pr-0">
+                  <Checkbox
+                    checked={isAllSelected}
+                    onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                  />
+                </TableHead>
+              )}
               {columns.map((column) => (
                 <TableHead key={column.key}>{column.label}</TableHead>
               ))}
@@ -158,7 +215,7 @@ export function DataTable({
             {loading ? (
               // Loading state
               <TableRow>
-                <TableCell colSpan={columns.length + (showActions ? 1 : 0)} className="text-center py-8">
+                <TableCell colSpan={columns.length + (showActions ? 1 : 0) + (selectable ? 1 : 0)} className="text-center py-8">
                   <div className="flex justify-center items-center">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                     <span className="ml-2">Loading...</span>
@@ -168,45 +225,63 @@ export function DataTable({
             ) : displayData.length === 0 ? (
               // Empty state
               <TableRow>
-                <TableCell colSpan={columns.length + (showActions ? 1 : 0)} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={columns.length + (showActions ? 1 : 0) + (selectable ? 1 : 0)} className="text-center py-8 text-muted-foreground">
                   {searchQuery ? "No results found for your search." : "No data available."}
                 </TableCell>
               </TableRow>
             ) : (
               // Data rows
-              displayData.map((row, index) => (
-                <TableRow key={index}>
-                  {columns.map((column) => (
-                    <TableCell key={column.key}>
-                      {column.render 
-                        ? column.render(row[column.key], row)
-                        : row[column.key]
-                      }
-                    </TableCell>
-                  ))}
-                  {showActions && (
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {actionItems.map((item, itemIndex) => (
-                            <DropdownMenuItem
-                              key={itemIndex}
-                              onClick={() => item.onClick(row)}
-                            >
-                              {item.label}
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))
+              displayData.map((row, index) => {
+                const rowId = getRowId ? getRowId(row) : (row._id || row.id || String(index));
+                const isSelected = selectedIds.includes(rowId);
+                const isSelectable = !isRowSelectable || isRowSelectable(row);
+
+                return (
+                  <TableRow key={rowId}>
+                    {selectable && (
+                      <TableCell className="w-[50px] pr-0">
+                        <Checkbox
+                          checked={isSelected}
+                          disabled={!isSelectable}
+                          onCheckedChange={(checked) => handleSelectRow(rowId, !!checked)}
+                        />
+                      </TableCell>
+                    )}
+                    {columns.map((column) => (
+                      <TableCell key={column.key}>
+                        {column.render 
+                          ? column.render(row[column.key], row)
+                          : row[column.key]
+                        }
+                      </TableCell>
+                    ))}
+                    {showActions && (
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {actionItems
+                              .filter((item) => !item.show || item.show(row))
+                              .map((item, itemIndex) => (
+                                <DropdownMenuItem
+                                  key={itemIndex}
+                                  onClick={() => item.onClick(row)}
+                                  disabled={item.disabled ? item.disabled(row) : false}
+                                >
+                                  {item.label}
+                                </DropdownMenuItem>
+                              ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>

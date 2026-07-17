@@ -8,16 +8,20 @@ import { StatusBadge } from "@/components/admin/StatusBadge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { ShieldAlert, RefreshCw, AlertCircle, CheckCircle2, Loader2, Send } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
-import { API_BASE_URL } from "@/lib/constants";
+import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/constants";
 
 type User = {
   _id: string;
@@ -126,10 +130,37 @@ export default function Monify() {
   const [payoutResult, setPayoutResult] = useState<any | null>(null);
   const [payoutError, setPayoutError] = useState<string | null>(null);
 
+  const { toast } = useToast();
+  const [selectedTxnIds, setSelectedTxnIds] = useState<string[]>([]);
+  const [showBulkConfirm, setShowBulkConfirm] = useState(false);
+  const [initiatingBulk, setInitiatingBulk] = useState(false);
+  const [bulkResult, setBulkResult] = useState<any | null>(null);
+  const [bulkError, setBulkError] = useState<string | null>(null);
+
+  const [txnToInitiate, setTxnToInitiate] = useState<Transaction | null>(null);
+  const [initiatingSingle, setInitiatingSingle] = useState(false);
+  const [singlePayoutError, setSinglePayoutError] = useState<string | null>(null);
+
+  const [txnToAuthorize, setTxnToAuthorize] = useState<Transaction | null>(null);
+  const [authCode, setAuthCode] = useState("");
+  const [authorizing, setAuthorizing] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+
   useEffect(() => {
     setPayoutResult(null);
     setPayoutError(null);
   }, [selectedTxn]);
+
+  useEffect(() => {
+    setSelectedTxnIds([]);
+    setBulkResult(null);
+    setBulkError(null);
+    setTxnToInitiate(null);
+    setSinglePayoutError(null);
+    setTxnToAuthorize(null);
+    setAuthCode("");
+    setAuthError(null);
+  }, [page, status, token]);
 
   const handleInitiatePayout = async () => {
     if (!selectedTxn || !token) return;
@@ -161,6 +192,134 @@ export default function Monify() {
       setInitiating(false);
     }
   };
+
+  const handleInitiateSinglePayout = async () => {
+    if (!txnToInitiate || !token) return;
+
+    setInitiatingSingle(true);
+    setSinglePayoutError(null);
+
+    try {
+      const response = await apiFetch(`${API_BASE_URL}/monify/payout/initiate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ transactionId: txnToInitiate._id }),
+      });
+
+      const resBody = await response.json();
+
+      if (!response.ok) {
+        throw new Error(resBody?.message || `Failed to initiate payout: ${response.status}`);
+      }
+
+      toast({
+        title: "Payout Initiated",
+        description: resBody.message || "Successfully initiated payout.",
+      });
+      setTxnToInitiate(null);
+      fetchTransactions();
+    } catch (e: any) {
+      setSinglePayoutError(e.message || "Failed to initiate payout.");
+    } finally {
+      setInitiatingSingle(false);
+    }
+  };
+
+  const handleAuthorizePayout = async () => {
+    if (!txnToAuthorize || !token) return;
+    if (!authCode.trim()) {
+      setAuthError("Authorization code is required.");
+      return;
+    }
+
+    setAuthorizing(true);
+    setAuthError(null);
+
+    try {
+      const response = await apiFetch(`${API_BASE_URL}/monify/payout/authorize`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          reference: txnToAuthorize.reference,
+          authorizationCode: authCode.trim(),
+        }),
+      });
+
+      const resBody = await response.json();
+
+      if (!response.ok) {
+        throw new Error(resBody?.message || `Failed to authorize payout: ${response.status}`);
+      }
+
+      toast({
+        title: "Payout Authorized",
+        description: resBody.message || "Payout has been authorized successfully.",
+      });
+      setTxnToAuthorize(null);
+      setAuthCode("");
+      fetchTransactions();
+      setSelectedTxn(null);
+    } catch (e: any) {
+      setAuthError(e.message || "Failed to authorize payout.");
+    } finally {
+      setAuthorizing(false);
+    }
+  };
+
+  const handleInitiateBulkPayout = async () => {
+    if (selectedTxnIds.length === 0 || !token) return;
+
+    setInitiatingBulk(true);
+    setBulkError(null);
+    setBulkResult(null);
+
+    try {
+      const response = await apiFetch(`${API_BASE_URL}/monify/payout/initiate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ transactionIds: selectedTxnIds }),
+      });
+
+      const resBody = await response.json();
+
+      if (!response.ok) {
+        throw new Error(resBody?.message || `Failed to initiate payouts: ${response.status}`);
+      }
+
+      setBulkResult(resBody);
+      toast({
+        title: "Payouts Initiated",
+        description: `Successfully initiated payouts for ${selectedTxnIds.length} requests.`,
+      });
+      setSelectedTxnIds([]);
+      fetchTransactions();
+      setShowBulkConfirm(false);
+    } catch (e: any) {
+      setBulkError(e.message || "Failed to initiate payouts.");
+      toast({
+        title: "Error Initiating Payouts",
+        description: e.message || "An error occurred.",
+        variant: "destructive",
+      });
+    } finally {
+      setInitiatingBulk(false);
+    }
+  };
+
+  const selectedTxns = useMemo(() => {
+    const transactionsList = data?.data?.transactions ?? [];
+    return transactionsList.filter(t => selectedTxnIds.includes(t._id));
+  }, [data, selectedTxnIds]);
+
+  const selectedTotalAmount = useMemo(() => {
+    return selectedTxns.reduce((sum, t) => sum + t.amount, 0);
+  }, [selectedTxns]);
 
   const limit = 20;
 
@@ -342,6 +501,23 @@ export default function Monify() {
 
   const actionItems = [
     { label: "View Details", onClick: (row: Transaction) => setSelectedTxn(row) },
+    {
+      label: "Initiate Payout",
+      show: (row: Transaction) => row.status === "pending",
+      onClick: (row: Transaction) => {
+        setSinglePayoutError(null);
+        setTxnToInitiate(row);
+      },
+    },
+    {
+      label: "Authorize Payout",
+      show: (row: Transaction) => row.status === "pending",
+      onClick: (row: Transaction) => {
+        setAuthError(null);
+        setAuthCode("");
+        setTxnToAuthorize(row);
+      },
+    },
   ];
 
   return (
@@ -353,16 +529,32 @@ export default function Monify() {
             breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Monify Payouts" }]}
             showSearch={false}
           />
-          <Button
-            onClick={fetchTransactions}
-            variant="outline"
-            size="sm"
-            disabled={loading}
-            className="flex items-center gap-2 border-slate-200"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-3">
+            {selectedTxnIds.length > 0 && (
+              <Button
+                onClick={() => {
+                  setBulkResult(null);
+                  setBulkError(null);
+                  setShowBulkConfirm(true);
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-medium flex items-center gap-2 shadow-sm border-0"
+                size="sm"
+              >
+                <Send className="h-4 w-4" />
+                Initiate Selected ({selectedTxnIds.length})
+              </Button>
+            )}
+            <Button
+              onClick={fetchTransactions}
+              variant="outline"
+              size="sm"
+              disabled={loading}
+              className="flex items-center gap-2 border-slate-200"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -402,6 +594,11 @@ export default function Monify() {
             onPageChange={(newPage) => setPage(newPage)}
             loading={loading}
             searchPlaceholder="Filter current view..."
+            selectable={true}
+            selectedIds={selectedTxnIds}
+            onSelectedIdsChange={setSelectedTxnIds}
+            isRowSelectable={(row) => row.status === "pending"}
+            getRowId={(row) => row._id}
           />
         </div>
 
@@ -575,6 +772,19 @@ export default function Monify() {
                           <dd className="font-semibold">{formatAmount(payoutResult.data.data.amount, selectedTxn.currency)}</dd>
                         </dl>
                       )}
+                      
+                      <Button
+                        onClick={() => {
+                          setAuthError(null);
+                          setAuthCode("");
+                          setTxnToAuthorize(selectedTxn);
+                        }}
+                        className="mt-3 w-full bg-green-600 hover:bg-green-700 text-white font-medium flex items-center justify-center gap-2 py-2 rounded-lg transition-all duration-200"
+                        size="sm"
+                      >
+                        <Send className="h-3.5 w-3.5" />
+                        Authorize Payout (OTP)
+                      </Button>
                     </div>
                   )}
 
@@ -601,6 +811,228 @@ export default function Monify() {
 
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Bulk Payout Confirmation Dialog */}
+        <Dialog open={showBulkConfirm} onOpenChange={(open) => !open && setShowBulkConfirm(false)}>
+          <DialogContent className="max-w-md rounded-2xl p-6">
+            <DialogHeader className="pb-2">
+              <DialogTitle className="text-lg font-semibold text-slate-900">
+                Confirm Batch Payout Initiation
+              </DialogTitle>
+              <DialogDescription className="text-sm text-slate-500 mt-1">
+                You are about to initiate payouts for multiple selected transactions.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 my-4">
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Selected Count</span>
+                  <span className="font-semibold text-slate-800">{selectedTxnIds.length} requests</span>
+                </div>
+                <div className="flex justify-between border-t border-slate-200/60 pt-2">
+                  <span className="text-slate-500">Total Amount</span>
+                  <span className="font-bold text-slate-950">{formatAmount(selectedTotalAmount)}</span>
+                </div>
+              </div>
+
+              {bulkError && (
+                <div className="text-xs text-red-600 bg-red-50 p-3 rounded-lg border border-red-100 flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                  <span>{bulkError}</span>
+                </div>
+              )}
+
+              <div className="text-xs text-slate-600 bg-blue-50/50 p-3 rounded-lg border border-blue-100/60">
+                <p className="font-medium text-blue-800 mb-1">Important Notice</p>
+                This will submit a batch disbursement request to Monnify. If bank account validation fails for any of the records, or if their statuses are not pending, the batch will be rejected.
+              </div>
+            </div>
+
+            <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setShowBulkConfirm(false)}
+                disabled={initiatingBulk}
+                className="w-full sm:w-auto"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleInitiateBulkPayout}
+                disabled={initiatingBulk}
+                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2"
+              >
+                {initiatingBulk ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Initiating Payouts...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4" />
+                    Confirm & Initiate
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Single Payout Confirmation Dialog */}
+        <Dialog open={!!txnToInitiate} onOpenChange={(open) => !open && setTxnToInitiate(null)}>
+          <DialogContent className="max-w-md rounded-2xl p-6">
+            <DialogHeader className="pb-2">
+              <DialogTitle className="text-lg font-semibold text-slate-900">
+                Confirm Payout Initiation
+              </DialogTitle>
+              <DialogDescription className="text-sm text-slate-500 mt-1">
+                You are about to initiate a payout for this transaction.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 my-4">
+              {txnToInitiate && (
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">User</span>
+                    <span className="font-semibold text-slate-800">{userLabel(txnToInitiate)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Reference</span>
+                    <span className="font-mono text-xs text-slate-800 truncate max-w-[200px]">{txnToInitiate.reference}</span>
+                  </div>
+                  <div className="flex justify-between border-t border-slate-200/60 pt-2">
+                    <span className="text-slate-500">Amount</span>
+                    <span className="font-bold text-slate-950">{formatAmount(txnToInitiate.amount, txnToInitiate.currency)}</span>
+                  </div>
+                </div>
+              )}
+
+              {singlePayoutError && (
+                <div className="text-xs text-red-600 bg-red-50 p-3 rounded-lg border border-red-100 flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                  <span>{singlePayoutError}</span>
+                </div>
+              )}
+
+              <div className="text-xs text-slate-600 bg-blue-50/50 p-3 rounded-lg border border-blue-100/60">
+                <p className="font-medium text-blue-800 mb-1">Important Notice</p>
+                This will submit a disbursement request to Monnify. Please ensure the user's payment method and destination details are correct.
+              </div>
+            </div>
+
+            <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setTxnToInitiate(null)}
+                disabled={initiatingSingle}
+                className="w-full sm:w-auto"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleInitiateSinglePayout}
+                disabled={initiatingSingle}
+                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2"
+              >
+                {initiatingSingle ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Initiating Payout...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4" />
+                    Confirm & Initiate
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Authorize Payout Dialog */}
+        <Dialog open={!!txnToAuthorize} onOpenChange={(open) => !open && setTxnToAuthorize(null)}>
+          <DialogContent className="max-w-md rounded-2xl p-6">
+            <DialogHeader className="pb-2">
+              <DialogTitle className="text-lg font-semibold text-slate-900">
+                Authorize Payout
+              </DialogTitle>
+              <DialogDescription className="text-sm text-slate-500 mt-1">
+                Enter the authorization code / OTP to release this payment.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 my-4">
+              {txnToAuthorize && (
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">User</span>
+                    <span className="font-semibold text-slate-800">{userLabel(txnToAuthorize)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Reference</span>
+                    <span className="font-mono text-xs text-slate-800 truncate max-w-[200px]">{txnToAuthorize.reference}</span>
+                  </div>
+                  <div className="flex justify-between border-t border-slate-200/60 pt-2">
+                    <span className="text-slate-500">Amount</span>
+                    <span className="font-bold text-slate-950">{formatAmount(txnToAuthorize.amount, txnToAuthorize.currency)}</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Authorization Code (OTP)
+                </label>
+                <Input
+                  type="text"
+                  placeholder="Enter Monnify OTP code"
+                  value={authCode}
+                  onChange={(e) => setAuthCode(e.target.value)}
+                  className="w-full border-slate-200 rounded-xl animate-none"
+                  disabled={authorizing}
+                />
+              </div>
+
+              {authError && (
+                <div className="text-xs text-red-600 bg-red-50 p-3 rounded-lg border border-red-100 flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                  <span>{authError}</span>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setTxnToAuthorize(null)}
+                disabled={authorizing}
+                className="w-full sm:w-auto"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleAuthorizePayout}
+                disabled={authorizing || !authCode.trim()}
+                className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white flex items-center justify-center gap-2"
+              >
+                {authorizing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Authorizing...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="h-4 w-4" />
+                    Authorize & Release
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>

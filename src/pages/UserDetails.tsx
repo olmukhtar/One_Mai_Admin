@@ -90,6 +90,7 @@ type UserRole = "admin" | "account" | "front_desk" | "customer_support";
 const BASE_URL = API_BASE_URL;
 const SHOW_URL = (id: string) => `${BASE_URL}/admin/users/${id}`;
 const APPROVE_AFFILIATE_URL = (id: string) => `${BASE_URL}/user/${id}/approve-affiliate`;
+const CHANGE_COMMISSION_URL = (id: string) => `${BASE_URL}/user/${id}/change-affiliate-commission`;
 
 function fmtCurrency(n?: number) {
   if (!n && n !== 0) return "₦0";
@@ -121,6 +122,12 @@ export default function UserDetails() {
   const [percentage, setPercentage] = useState("10");
   const [approving, setApproving] = useState(false);
   const [approvalError, setApprovalError] = useState<string | null>(null);
+
+  // Affiliate Commission Rate State
+  const [showCommissionModal, setShowCommissionModal] = useState(false);
+  const [newCommissionRate, setNewCommissionRate] = useState("10");
+  const [updatingCommission, setUpdatingCommission] = useState(false);
+  const [commissionError, setCommissionError] = useState<string | null>(null);
 
   // Auth & Roles
   const token = useMemo(() => {
@@ -183,6 +190,33 @@ export default function UserDetails() {
       setApprovalError(e.message);
     } finally {
       setApproving(false);
+    }
+  };
+
+  const handleChangeCommission = async () => {
+    const pNum = parseFloat(newCommissionRate);
+    if (isNaN(pNum) || pNum <= 0 || pNum > 100) return setCommissionError("Invalid percentage");
+
+    setUpdatingCommission(true);
+    try {
+      const res = await apiFetch(CHANGE_COMMISSION_URL(id), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ percentage: newCommissionRate }),
+      });
+      if (!res.ok) throw new Error("Failed to change commission rate");
+
+      if (data) {
+        setData({
+          ...data,
+          user: { ...data.user, commissionRate: pNum }
+        });
+      }
+      setShowCommissionModal(false);
+    } catch (e: any) {
+      setCommissionError(e.message);
+    } finally {
+      setUpdatingCommission(false);
     }
   };
 
@@ -267,6 +301,30 @@ export default function UserDetails() {
                     <span className="text-xs font-bold text-purple-700 uppercase">Affiliate</span>
                     <StatusBadge status={(u.isApproved || u.isAprroved) ? "Approved" : "Pending"} />
                   </div>
+                  
+                  {(u.isApproved || u.isAprroved) && (
+                    <div className="space-y-3 mt-2 pt-2 border-t border-purple-100">
+                      <div className="flex justify-between items-center text-sm text-purple-900">
+                        <span>Commission Rate:</span>
+                        <span className="font-bold">{u.commissionRate || 0}%</span>
+                      </div>
+                      {canApproveAffiliate && (
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="w-full border-purple-300 text-purple-700 hover:bg-purple-100" 
+                          onClick={() => {
+                            setNewCommissionRate((u.commissionRate || 0).toString());
+                            setCommissionError(null);
+                            setShowCommissionModal(true);
+                          }}
+                        >
+                          Change Commission
+                        </Button>
+                      )}
+                    </div>
+                  )}
+
                   {!u.isApproved && !u.isAprroved && canApproveAffiliate && (
                     <Button size="sm" className="w-full bg-purple-600" onClick={() => setShowApprovalModal(true)}>
                       Approve Now
@@ -383,6 +441,28 @@ export default function UserDetails() {
                 <Button variant="ghost" onClick={() => setShowApprovalModal(false)}>Cancel</Button>
                 <Button className="bg-purple-600" onClick={handleApproveAffiliate} disabled={approving}>
                   {approving ? <Loader2 className="animate-spin h-4 w-4" /> : "Approve"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Affiliate Commission Edit Modal */}
+      {showCommissionModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <Card className="max-w-md w-full">
+            <CardHeader><CardTitle>Change Commission Rate</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Commission Rate (%)</Label>
+                <Input type="number" value={newCommissionRate} onChange={(e) => setNewCommissionRate(e.target.value)} />
+              </div>
+              {commissionError && <p className="text-red-500 text-sm">{commissionError}</p>}
+              <div className="flex justify-end gap-3 pt-2">
+                <Button variant="ghost" onClick={() => setShowCommissionModal(false)}>Cancel</Button>
+                <Button className="bg-purple-600" onClick={handleChangeCommission} disabled={updatingCommission}>
+                  {updatingCommission ? <Loader2 className="animate-spin h-4 w-4" /> : "Save Changes"}
                 </Button>
               </div>
             </CardContent>
