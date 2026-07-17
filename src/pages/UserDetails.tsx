@@ -222,9 +222,18 @@ export default function UserDetails() {
             <CardContent className="space-y-4">
               <div className="flex items-center gap-4">
                 <img
-                  src={u?.image ? `${IMAGE_BASE_URL}${u.image}` : `https://api.dicebear.com/7.x/initials/svg?seed=${u?.email}`}
-                  className="h-16 w-16 rounded-full border"
+                  src={
+                    u?.image
+                      ? u.image.startsWith("http")
+                        ? u.image
+                        : `${IMAGE_BASE_URL}${u.image}`
+                      : `https://api.dicebear.com/7.x/initials/svg?seed=${u?.email}`
+                  }
+                  className="h-16 w-16 rounded-full border object-cover"
                   alt="Avatar"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/initials/svg?seed=${u?.email}`;
+                  }}
                 />
                 <div>
                   <h2 className="font-bold text-lg">{nameOf(u)}</h2>

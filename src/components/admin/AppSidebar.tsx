@@ -17,7 +17,8 @@ import {
   UserPlus,
   Folder,
   BookOpen,
-  Book
+  Book,
+  ClipboardCheck
 } from "lucide-react";
 
 // Mock user role - in real app, this would come from context/auth
@@ -28,6 +29,7 @@ const mainItems = [
   { title: "Users", url: "/users", icon: Users, roles: ["Admin", "Account", "Front Desk", "Customer Support"] },
   { title: "Groups", url: "/groups", icon: Users2, roles: ["Admin", "Account", "Front Desk", "Customer Support"] },
   { title: "Affiliates", url: "/affiliates", icon: UserCheck, roles: ["Admin", "Account"] },
+  { title: "Affiliate Applications", url: "/affiliate-applications", icon: ClipboardCheck, roles: ["Admin", "Account"] },
   { title: "Transactions", url: "/transactions", icon: CreditCard, roles: ["Admin", "Account", "Customer Support"] },
   { title: "Monify Payouts", url: "/monify", icon: Wallet, roles: ["Admin", "Account"] },
   { title: "Resources", url: "/resources", icon: Folder, roles: ["Admin", "Account", "Front Desk", "Customer Support", "Marketing"] },
