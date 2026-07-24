@@ -122,7 +122,8 @@ const Support = () => {
       })
       .then((j: any) => {
         const payload = j.data || j;
-        const supports = payload.supports || (Array.isArray(payload) ? payload : []);
+        // API returns { data: [...], count: 7 } or { supports: [...] } or direct array
+        const supports = payload.data || payload.supports || (Array.isArray(payload) ? payload : []);
         setData({
           supports,
           message: j.message || payload.message || ""
