@@ -141,9 +141,8 @@ export default function UserDetails() {
   }, []);
 
   const canApproveAffiliate = role === "admin" || role === "account";
-  const cameFromAffiliates = (location.state as any)?.fromPage === 'affiliates';
-  const userListPath = (cameFromAffiliates || data?.user?.userType === "affiliate") ? "/affiliates" : "/users";
-  const userListLabel = (cameFromAffiliates || data?.user?.userType === "affiliate") ? "Affiliates" : "Users";
+  const userListPath = "/users";
+  const userListLabel = "Users";
 
   useEffect(() => {
     if (!token) {

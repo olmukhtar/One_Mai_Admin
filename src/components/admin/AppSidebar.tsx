@@ -28,7 +28,6 @@ const mainItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, roles: ["Admin", "Account", "Front Desk", "Customer Support", "Marketing"] },
   { title: "Users", url: "/users", icon: Users, roles: ["Admin", "Account", "Front Desk", "Customer Support"] },
   { title: "Groups", url: "/groups", icon: Users2, roles: ["Admin", "Account", "Front Desk", "Customer Support"] },
-  { title: "Affiliates", url: "/affiliates", icon: UserCheck, roles: ["Admin", "Account"] },
   { title: "Affiliate Applications", url: "/affiliate-applications", icon: ClipboardCheck, roles: ["Admin", "Account"] },
   { title: "Transactions", url: "/transactions", icon: CreditCard, roles: ["Admin", "Account", "Customer Support"] },
   { title: "Monify Payouts", url: "/monify", icon: Wallet, roles: ["Admin", "Account"] },
@@ -75,9 +74,6 @@ export function AppSidebar() {
     }
   };
 
-  // Check if we're on a user details page that came from affiliates
-  const fromPage = (location.state as any)?.fromPage;
-  const isOnAffiliateDetails = pathname.startsWith("/users/") && fromPage === "affiliates";
 
   const baseItemClasses = "relative flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all duration-200 group cursor-pointer";
   const activeItemClasses = `${baseItemClasses} text-white bg-gradient-to-r from-[#1766a4] to-[#207EC4] shadow-lg ring-1 ring-white/20 before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-white before:rounded-r-full`;
@@ -121,50 +117,27 @@ export function AppSidebar() {
       <nav className="flex-1 overflow-y-auto p-3">
         <div className="space-y-1">
           {/* Main Items */}
-          {filteredMainItems.map((item) => {
-            // Custom active state logic for Users and Affiliates
-            let customIsActive = false;
-
-            if (item.url === "/users") {
-              // Users is active if on /users OR on user details but NOT from affiliates
-              customIsActive = pathname === "/users" || (pathname.startsWith("/users/") && !isOnAffiliateDetails);
-            } else if (item.url === "/affiliates") {
-              // Affiliates is active if on /affiliates OR on affiliate user details
-              customIsActive = pathname === "/affiliates" || isOnAffiliateDetails;
-            }
-
-            return (
-              <NavLink
-                key={item.title}
-                to={item.url}
-                end={item.url === "/dashboard"}
-                className={({ isActive }) => {
-                  // Use custom active state for Users/Affiliates, otherwise use NavLink's isActive
-                  const shouldBeActive = (item.url === "/users" || item.url === "/affiliates")
-                    ? customIsActive
-                    : isActive;
-                  return shouldBeActive ? activeItemClasses : inactiveItemClasses;
-                }}
-              >
-                {({ isActive }) => {
-                  // Use custom active state for icon styling too
-                  const shouldBeActive = (item.url === "/users" || item.url === "/affiliates")
-                    ? customIsActive
-                    : isActive;
-                  return (
-                    <>
-                      <item.icon className={shouldBeActive ? activeIconClasses : inactiveIconClasses} />
-                      {!isCollapsed && (
-                        <span className="truncate font-medium">
-                          {item.title}
-                        </span>
-                      )}
-                    </>
-                  );
-                }}
-              </NavLink>
-            );
-          })}
+          {filteredMainItems.map((item) => (
+            <NavLink
+              key={item.title}
+              to={item.url}
+              end={item.url === "/dashboard"}
+              className={({ isActive }) =>
+                isActive ? activeItemClasses : inactiveItemClasses
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <item.icon className={isActive ? activeIconClasses : inactiveIconClasses} />
+                  {!isCollapsed && (
+                    <span className="truncate font-medium">
+                      {item.title}
+                    </span>
+                  )}
+                </>
+              )}
+            </NavLink>
+          ))}
 
           {/* Reports Section - Only show if user has access to any reports */}
           {hasReportsAccess && (

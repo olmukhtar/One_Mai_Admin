@@ -139,7 +139,6 @@ export default function Affiliates() {
 
     const url = new URL(USERS_URL);
     url.searchParams.set("page", String(pageNum));
-    url.searchParams.set("type", "affiliate");
     if (search) url.searchParams.set("search", search);
 
     apiFetch(url.toString(), {
