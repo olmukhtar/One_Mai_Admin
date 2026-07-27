@@ -5,25 +5,13 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { DataTable } from "@/components/admin/DataTable";
 import { StatusBadge } from "@/components/admin/StatusBadge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Still used for status filter
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import {
   ShieldAlert,
   RefreshCw,
   AlertCircle,
-  CheckCircle2,
-  Loader2,
-  ExternalLink,
 } from "lucide-react";
 
 import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
@@ -216,26 +204,12 @@ export default function AffiliateApplications() {
   const navigate = useNavigate();
 
   const canView = role === "admin" || role === "account";
-  const canReview = role === "admin" || role === "account";
 
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<"all" | ApplicationStatus>("all");
   const [rows, setRows] = useState<Application[]>([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-
-  // Details/review dialog state
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [details, setDetails] = useState<DetailsResponse["data"] | null>(null);
-  const [detailsLoading, setDetailsLoading] = useState(false);
-  const [detailsErr, setDetailsErr] = useState<string | null>(null);
-
-  const [reviewStatus, setReviewStatus] = useState<ApplicationStatus>("pending");
-  const [reviewNote, setReviewNote] = useState("");
-  const [reviewReason, setReviewReason] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
 
   const fetchApplications = () => {
     if (!token || !canView) return;
@@ -283,96 +257,7 @@ export default function AffiliateApplications() {
   }, [token, page, statusFilter, canView]);
 
   const openDetails = (id: string) => {
-    setSelectedId(id);
-    setDetails(null);
-    setDetailsErr(null);
-    setSubmitError(null);
-    setSubmitSuccess(null);
-    setDetailsLoading(true);
-
-    apiFetch(DETAILS_URL(id))
-      .then(async (res) => {
-        if (!res.ok) {
-          let msg = `Failed to load application: ${res.status}`;
-          try {
-            const j = await res.json();
-            if (j?.message) msg = j.message;
-          } catch {}
-          throw new Error(msg);
-        }
-        return res.json();
-      })
-      .then((json: DetailsResponse) => {
-        setDetails(json.data);
-        setReviewStatus(json.data.application.status || "pending");
-        setReviewNote(json.data.application.reviewNote || "");
-        setReviewReason("");
-      })
-      .catch((e: any) => setDetailsErr(e?.message || "Failed to load application"))
-      .finally(() => setDetailsLoading(false));
-  };
-
-  const closeDetails = () => {
-    setSelectedId(null);
-    setDetails(null);
-    setDetailsErr(null);
-  };
-
-  const handleSubmitReview = async () => {
-    if (!selectedId) return;
-    if (!adminId) {
-      setSubmitError("Couldn't determine your admin ID. Please sign in again.");
-      return;
-    }
-
-    setSubmitting(true);
-    setSubmitError(null);
-    setSubmitSuccess(null);
-
-    try {
-      // Confirmed: PATCH to the same resource URL used for GET details.
-      const res = await apiFetch(DETAILS_URL(selectedId), {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status: reviewStatus,
-          reviewNote: reviewNote || undefined,
-          reviewedBy: adminId,
-          reason: reviewReason || undefined,
-        }),
-      });
-
-      const body = await res.json().catch(() => null);
-      if (!res.ok) {
-        throw new Error(body?.message || `Failed to update application: ${res.status}`);
-      }
-
-      setSubmitSuccess(body?.message || "Application updated successfully.");
-
-      // The PATCH response returns the full updated application (flat, not wrapped
-      // in { application, kyc } like the GET details endpoint), so use it directly
-      // rather than manually merging individual fields.
-      const updatedApplication: Application | undefined = body?.data;
-
-      if (updatedApplication) {
-        setRows((prev) => prev.map((a) => (a._id === selectedId ? updatedApplication : a)));
-        setDetails((prev) => (prev ? { ...prev, application: updatedApplication } : prev));
-      } else {
-        // Fallback: reflect the submitted values locally if the response shape differs.
-        setRows((prev) =>
-          prev.map((a) => (a._id === selectedId ? { ...a, status: reviewStatus, reviewNote: reviewNote || null } : a))
-        );
-        setDetails((prev) =>
-          prev
-            ? { ...prev, application: { ...prev.application, status: reviewStatus, reviewNote: reviewNote || null } }
-            : prev
-        );
-      }
-    } catch (e: any) {
-      setSubmitError(e?.message || "Failed to update application");
-    } finally {
-      setSubmitting(false);
-    }
+    navigate(`/affiliate-applications/${id}`);
   };
 
   if (!canView) {
@@ -543,245 +428,6 @@ export default function AffiliateApplications() {
           />
         </div>
 
-        {/* Review Dialog */}
-        <Dialog open={!!selectedId} onOpenChange={(open) => !open && closeDetails()}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl p-6">
-            <DialogHeader className="border-b border-slate-100 pb-4 mb-4">
-              <DialogTitle className="text-slate-900">Affiliate Application</DialogTitle>
-            </DialogHeader>
-
-            {detailsLoading && (
-              <div className="flex items-center justify-center py-16">
-                <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-              </div>
-            )}
-
-            {detailsErr && !detailsLoading && (
-              <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 p-4 rounded-xl border border-red-100">
-                <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
-                <span>{detailsErr}</span>
-              </div>
-            )}
-
-            {details && !detailsLoading && (
-              <div className="space-y-6 text-sm">
-                {/* Applicant */}
-                <div>
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Applicant</h4>
-                  <div className="flex items-center gap-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
-                    <img
-                      src={
-                        details.application.user?.image ||
-                        `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(nameOf(details.application.user))}`
-                      }
-                      alt={nameOf(details.application.user)}
-                      className="w-12 h-12 rounded-full object-cover border border-white shadow-sm"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-slate-950">{nameOf(details.application.user)}</div>
-                      <div className="text-xs text-slate-500">{details.application.user?.email}</div>
-                      <div className="text-xs text-slate-500">{details.application.user?.phoneNumber || "—"}</div>
-                    </div>
-                    <Link
-                      to={`/users/${details.application.user?._id}`}
-                      className="text-xs text-blue-600 hover:underline font-semibold flex items-center gap-1 flex-shrink-0"
-                      onClick={closeDetails}
-                    >
-                      View profile <ExternalLink className="h-3 w-3" />
-                    </Link>
-                  </div>
-                </div>
-
-                {/* Application details */}
-                <div>
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">
-                    Application Details
-                  </h4>
-                  <dl className="grid grid-cols-2 gap-y-3 gap-x-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
-                    <dt className="text-slate-500">Status</dt>
-                    <dd><StatusBadge status={humanizeStatus(details.application.status)} /></dd>
-
-                    <dt className="text-slate-500">Has Audience</dt>
-                    <dd className="text-slate-800">{details.application.hasAudience ? "Yes" : "No"}</dd>
-
-                    {details.application.hasAudience && (
-                      <>
-                        <dt className="text-slate-500">Estimated Audience Size</dt>
-                        <dd className="text-slate-800">
-                          {details.application.estimatedAudienceSize?.toLocaleString() || "—"}
-                        </dd>
-                      </>
-                    )}
-
-                    <dt className="text-slate-500">Promotion Experience</dt>
-                    <dd className="text-slate-800">
-                      {details.application.hasProductPromotionExperience ? "Yes" : "No"}
-                    </dd>
-
-                    <dt className="text-slate-500">Promotion Channels</dt>
-                    <dd className="flex flex-wrap gap-1">
-                      {(details.application.promotionChannels || []).map((c) => (
-                        <span
-                          key={c}
-                          className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-white text-slate-700 border border-slate-200"
-                        >
-                          {CHANNEL_LABELS[c] || c}
-                        </span>
-                      ))}
-                    </dd>
-
-                    <dt className="text-slate-500">Applied</dt>
-                    <dd className="text-slate-700">{formatDate(details.application.createdAt)}</dd>
-                  </dl>
-
-                  <div className="mt-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
-                    <dt className="text-slate-500 mb-1">Reason</dt>
-                    <dd className="text-slate-800 leading-relaxed">{details.application.reason}</dd>
-                  </div>
-
-                  {details.application.socials && Object.keys(details.application.socials).length > 0 && (
-                    <div className="mt-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
-                      <dt className="text-slate-500 mb-2">Social Profiles</dt>
-                      <dd className="flex flex-col gap-1">
-                        {Object.entries(details.application.socials).map(([key, url]) =>
-                          url ? (
-                            <a
-                              key={key}
-                              href={url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-xs text-blue-600 hover:underline flex items-center gap-1"
-                            >
-                              <span className="capitalize font-medium text-slate-600">{key}:</span> {url}
-                            </a>
-                          ) : null
-                        )}
-                      </dd>
-                    </div>
-                  )}
-                </div>
-
-                {/* KYC */}
-                <div>
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">
-                    Identity Verification (KYC)
-                  </h4>
-                  {details.kyc ? (
-                    <dl className="grid grid-cols-2 gap-y-3 gap-x-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
-                      <dt className="text-slate-500">Provider</dt>
-                      <dd className="capitalize text-slate-800">{details.kyc.provider || "—"}</dd>
-
-                      <dt className="text-slate-500">Status</dt>
-                      <dd><StatusBadge status={details.kyc.status || "unknown"} /></dd>
-
-                      <dt className="text-slate-500">Verified Name</dt>
-                      <dd className="text-slate-800">{details.kyc.data?.summary?.name || "—"}</dd>
-
-                      {details.kyc.data?.bvnInformationVerification?.responseBody?.name && (
-                        <>
-                          <dt className="text-slate-500">BVN Name Match</dt>
-                          <dd className="text-slate-800">
-                            {details.kyc.data.bvnInformationVerification.responseBody.name.matchStatus || "—"}
-                            {typeof details.kyc.data.bvnInformationVerification.responseBody.name.matchPercentage ===
-                              "number" &&
-                              ` (${details.kyc.data.bvnInformationVerification.responseBody.name.matchPercentage}%)`}
-                          </dd>
-                        </>
-                      )}
-
-                      <dt className="text-slate-500">Verified At</dt>
-                      <dd className="text-slate-700">{formatDate(details.kyc.verifiedAt)}</dd>
-                    </dl>
-                  ) : (
-                    <div className="text-xs text-slate-500 bg-slate-50 p-4 rounded-xl border border-slate-100">
-                      No KYC record found for this applicant yet.
-                    </div>
-                  )}
-                </div>
-
-                {/* Review action */}
-                {canReview && (
-                  <div className="border-t border-slate-100 pt-4 space-y-4">
-                    <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Review</h4>
-
-                    {submitError && (
-                      <div className="text-xs text-red-600 bg-red-50 p-3 rounded-lg border border-red-100 flex items-center gap-2">
-                        <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
-                        <span>{submitError}</span>
-                      </div>
-                    )}
-                    {submitSuccess && (
-                      <div className="text-xs text-green-600 bg-green-50 p-3 rounded-lg border border-green-100 flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
-                        <span>{submitSuccess}</span>
-                      </div>
-                    )}
-
-                    <div className="space-y-2">
-                      <Label htmlFor="review-status">Decision</Label>
-                      <Select value={reviewStatus} onValueChange={(v: any) => setReviewStatus(v)}>
-                        <SelectTrigger id="review-status" className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {STATUS_OPTIONS.map((s) => (
-                            <SelectItem key={s.value} value={s.value}>
-                              {s.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="review-note">Internal Note (not shared with the applicant)</Label>
-                      <Textarea
-                        id="review-note"
-                        value={reviewNote}
-                        onChange={(e) => setReviewNote(e.target.value)}
-                        placeholder="e.g. Socials look authentic, audience size unverifiable"
-                        rows={2}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="review-reason">Feedback to Applicant (optional)</Label>
-                      <Textarea
-                        id="review-reason"
-                        value={reviewReason}
-                        onChange={(e) => setReviewReason(e.target.value)}
-                        placeholder="e.g. Please provide more detail about your audience"
-                        rows={2}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {details && canReview && !detailsLoading && (
-              <DialogFooter className="border-t border-slate-100 pt-4 mt-2">
-                <Button variant="outline" onClick={closeDetails} disabled={submitting}>
-                  Close
-                </Button>
-                <Button
-                  onClick={handleSubmitReview}
-                  disabled={submitting}
-                  className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
-                >
-                  {submitting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    "Save Decision"
-                  )}
-                </Button>
-              </DialogFooter>
-            )}
-          </DialogContent>
-        </Dialog>
       </div>
     </AdminLayout>
   );
