@@ -12,8 +12,8 @@ type User = {
   lastName: string;
   image?: string;
   email: string;
-  userType: "normal" | "affiliate" | string;
-  accountStatus: "active" | "suspended" | string;
+  userType?: "normal" | "affiliate" | string;
+  accountStatus?: "active" | "suspended" | string;
   authType?: string;
   twoFactor?: boolean;
   isVerified: boolean;
@@ -304,6 +304,8 @@ export default function Users() {
   const rows = allUsers.map((u) => ({
     ...u,
     name: nameOf(u),
+    // The list endpoint filters by ?type=normal but doesn't return userType
+    userType: u.userType || "normal",
   }));
 
   // Build action items based on role permissions

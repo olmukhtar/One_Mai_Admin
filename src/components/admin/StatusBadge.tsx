@@ -2,11 +2,13 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 interface StatusBadgeProps {
-  status: string;
+  status?: string | null;
   variant?: "success" | "warning" | "destructive" | "secondary";
 }
 
 export function StatusBadge({ status, variant = "secondary" }: StatusBadgeProps) {
+  const label = status == null || status === "" ? "—" : String(status);
+
   const getVariantFromStatus = (status: string) => {
     const lowercaseStatus = status.toLowerCase();
     
@@ -29,7 +31,7 @@ export function StatusBadge({ status, variant = "secondary" }: StatusBadgeProps)
     return "secondary";
   };
 
-  const actualVariant = variant === "secondary" ? getVariantFromStatus(status) : variant;
+  const actualVariant = variant === "secondary" ? getVariantFromStatus(label) : variant;
 
   const variantClasses = {
     success: "bg-success/10 text-success hover:bg-success/20 border-success/20",
@@ -46,7 +48,7 @@ export function StatusBadge({ status, variant = "secondary" }: StatusBadgeProps)
         variantClasses[actualVariant]
       )}
     >
-      {status}
+      {label}
     </Badge>
   );
 }
