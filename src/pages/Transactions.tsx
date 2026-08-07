@@ -1,4 +1,3 @@
-// /src/pages/Transactions.tsx
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -14,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ShieldAlert } from "lucide-react";
+import { ShieldAlert, ArrowRight, ArrowUpRight, ArrowDownLeft } from "lucide-react";
 
 import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
 import { API_BASE_URL } from "@/lib/constants";
@@ -94,9 +93,6 @@ function userLabel(row: Transaction) {
   return name || u.email || "—";
 }
 
-// The API doesn't return explicit from/to fields - derive the money route
-// from the transaction `type` instead (contribute = user -> group,
-// group_payout = group -> user, payout = user wallet -> external bank).
 function getRoute(row: Transaction): {
   from: string;
   fromLink?: string;
@@ -108,13 +104,13 @@ function getRoute(row: Transaction): {
   const groupLink = row.groupId ? `/groups/${row.groupId}` : undefined;
 
   if (row.type === "contribute") {
-    return { from: user, fromLink: userLink, to: "Group", toLink: groupLink };
+    return { from: user, fromLink: userLink, to: "Savings Circle", toLink: groupLink };
   }
   if (row.type === "group_payout") {
-    return { from: "Group", fromLink: groupLink, to: user, toLink: userLink };
+    return { from: "Savings Circle", fromLink: groupLink, to: user, toLink: userLink };
   }
   if (row.type === "payout") {
-    return { from: user, fromLink: userLink, to: "Bank Account" };
+    return { from: user, fromLink: userLink, to: "External Bank Account" };
   }
   return { from: user, fromLink: userLink, to: "—" };
 }
@@ -133,8 +129,6 @@ export default function Transactions() {
   const [err, setErr] = useState<string | null>(null);
   const [selectedTxn, setSelectedTxn] = useState<Transaction | null>(null);
 
-  // Permission checks based on roles
-  // getAllTransactions: admin (full), account (full), customer_support (view only), front_desk (no access)
   const canView = role === "admin" || role === "account" || role === "customer_support";
   const isViewOnly = role === "customer_support";
 
@@ -167,7 +161,7 @@ export default function Transactions() {
           try {
             const j = await r.json();
             if (j?.message) m = `Failed to load transactions: ${j.message}`;
-          } catch { }
+          } catch {}
           throw new Error(m);
         }
         return r.json();
@@ -181,34 +175,27 @@ export default function Transactions() {
     return () => ctl.abort();
   }, [token, page, status, type, navigate, canView]);
 
-  // If user doesn't have access, show permission denied
   if (!canView) {
     return (
       <AdminLayout>
         <div className="space-y-6">
           <PageHeader
-            title="Transactions"
-            breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Transactions" }]}
-            searchPlaceholder=""
-            showSearch={false}
+            title="Transactions Audit"
+            breadcrumbs={[{ label: "Transactions" }]}
           />
-
-          <Card className="max-w-2xl border border-slate-100 shadow-sm rounded-xl">
-            <CardContent className="pt-6">
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="rounded-full bg-red-100 p-3 mb-4">
-                  <ShieldAlert className="h-8 w-8 text-red-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Access Denied</h3>
-                <p className="text-sm text-gray-600 mb-6 max-w-md">
-                  You don't have permission to view transactions. This feature is only available to Admin,
-                  Account, and Customer Support roles.
-                </p>
-                <Button onClick={() => navigate("/dashboard")} variant="outline">
-                  Return to Dashboard
-                </Button>
+          <Card className="max-w-xl border border-border/80 shadow-sm rounded-2xl bg-card p-6">
+            <div className="flex flex-col items-center justify-center text-center space-y-3">
+              <div className="rounded-full bg-rose-100 dark:bg-rose-950/40 p-3 text-rose-600">
+                <ShieldAlert className="h-8 w-8" />
               </div>
-            </CardContent>
+              <h3 className="text-base font-bold text-foreground">Access Restricted</h3>
+              <p className="text-xs text-muted-foreground max-w-sm">
+                You do not have administrative permission to view transaction ledgers.
+              </p>
+              <Button onClick={() => navigate("/dashboard")} variant="outline" className="rounded-xl text-xs">
+                Back to Dashboard
+              </Button>
+            </div>
           </Card>
         </div>
       </AdminLayout>
@@ -221,197 +208,184 @@ export default function Transactions() {
   const total = data?.totalTransactions ?? 0;
 
   const columns = [
-    { key: "reference", label: "Reference", render: (v: string) => <span className="font-mono text-xs">{v}</span> },
+    {
+      key: "reference",
+      label: "Reference Code",
+      render: (v: string) => (
+        <span className="font-mono text-xs font-semibold text-brand">{v}</span>
+      ),
+    },
     {
       key: "type",
-      label: "Type",
+      label: "Category",
       render: (v: string) => <StatusBadge status={v} />,
     },
     {
       key: "status",
       label: "Status",
       render: (v: string) => (
-        <StatusBadge status={v === "completed" ? "Successful" : v.charAt(0).toUpperCase() + v.slice(1)} />
+        <StatusBadge
+          status={v === "completed" ? "Successful" : v}
+          variant={v === "completed" ? "success" : v === "pending" ? "warning" : "destructive"}
+        />
       ),
     },
-    { key: "paymentMethod", label: "Method", render: (v: string) => v || "—" },
-    { key: "amount", label: "Amount", render: (v: number) => ngn(v) },
+    {
+      key: "amount",
+      label: "Transaction Value",
+      render: (v: number) => (
+        <span className="font-bold text-xs text-foreground">{ngn(v)}</span>
+      ),
+    },
     {
       key: "route",
-      label: "Route",
+      label: "Financial Flow",
       render: (_: any, row: Transaction) => {
         const route = getRoute(row);
         return (
-          <div className="text-xs">
-            <div className="text-slate-500">from</div>
-            <div className="font-medium">
-              {route.fromLink ? <Link to={route.fromLink} className="hover:underline">{route.from}</Link> : route.from}
-            </div>
-            <div className="text-slate-500 mt-1">to</div>
-            <div className="font-medium">
-              {route.toLink ? <Link to={route.toLink} className="hover:underline">{route.to}</Link> : route.to}
-            </div>
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="font-medium text-foreground truncate max-w-[120px]">
+              {route.fromLink ? (
+                <Link to={route.fromLink} className="hover:text-brand transition-colors">
+                  {route.from}
+                </Link>
+              ) : (
+                route.from
+              )}
+            </span>
+            <ArrowRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+            <span className="font-medium text-foreground truncate max-w-[120px]">
+              {route.toLink ? (
+                <Link to={route.toLink} className="hover:text-brand transition-colors">
+                  {route.to}
+                </Link>
+              ) : (
+                route.to
+              )}
+            </span>
           </div>
         );
       },
     },
     {
       key: "createdAt",
-      label: "Date",
-      render: (v: string) =>
-        new Date(v).toLocaleString("en-NG", {
-          year: "numeric",
-          month: "short",
-          day: "2-digit",
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
+      label: "Timestamp",
+      render: (v: string) => (
+        <span className="text-xs text-muted-foreground">
+          {new Date(v).toLocaleString("en-NG", {
+            month: "short",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </span>
+      ),
     },
   ];
 
   const actionItems = [
-    { label: "View Details", onClick: (row: Transaction) => setSelectedTxn(row) },
-    ...(isViewOnly ? [] : [
-      { label: "Flag Transaction", onClick: (row: Transaction) => console.log("Flag", row._id) },
-    ]),
+    { label: "Inspect Transaction Receipt", onClick: (row: Transaction) => setSelectedTxn(row) },
   ];
 
   return (
     <AdminLayout>
       <div className="space-y-6">
         <PageHeader
-          title="Transactions"
-          breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Transactions" }]}
-          showSearch={false}
+          title="Transaction Audit Ledger"
+          subtitle="Real-time log of deposits, savings contributions, and monify payouts."
+          breadcrumbs={[{ label: "Transactions" }]}
+          showExportButtons
+          rightSlot={
+            <div className="flex items-center gap-2">
+              <Select value={status} onValueChange={(v: any) => setStatus(v)}>
+                <SelectTrigger className="h-9 w-32 rounded-xl text-xs border-border/80 bg-card font-medium">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="completed">Successful</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="failed">Failed</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={type} onValueChange={(v: any) => setType(v)}>
+                <SelectTrigger className="h-9 w-36 rounded-xl text-xs border-border/80 bg-card font-medium">
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="contribution">Contribution</SelectItem>
+                  <SelectItem value="payout">Payout</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          }
         />
 
-        {isViewOnly && (
-          <div className="text-sm text-amber-700 bg-amber-50 p-3 rounded border border-amber-200">
-            You have view-only access to transactions. You cannot perform any actions on transactions.
-          </div>
-        )}
-
-        {/* Filters */}
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Status</span>
-            <Select value={status} onValueChange={(v: any) => setStatus(v)}>
-              <SelectTrigger className="w-36">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="completed">Successful</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="failed">Failed</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Type</span>
-            <Select value={type} onValueChange={(v: any) => setType(v)}>
-              <SelectTrigger className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="contribution">Contribution</SelectItem>
-                <SelectItem value="payout">Payout</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
         {err && (
-          <div className="text-sm text-red-600 bg-red-50 p-2 rounded border border-red-100">{err}</div>
+          <div className="text-xs font-medium text-rose-600 bg-rose-50 dark:bg-rose-950/40 p-3 rounded-xl border border-rose-200/60 dark:border-rose-800/40">
+            {err}
+          </div>
         )}
 
         <DataTable
           columns={columns}
-          data={loading ? [] : rows}
+          data={rows}
           actionItems={actionItems}
           currentPage={currentPage}
           totalPages={totalPages}
           totalEntries={total}
-          onPageChange={(newPage) => setPage(newPage)}
+          onPageChange={setPage}
           loading={loading}
         />
 
+        {/* Transaction Detail Modal */}
         <Dialog open={!!selectedTxn} onOpenChange={(open) => !open && setSelectedTxn(null)}>
-          <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="font-mono text-sm">{selectedTxn?.reference}</DialogTitle>
+          <DialogContent className="max-w-md rounded-2xl border border-border shadow-2xl bg-card p-6">
+            <DialogHeader className="border-b border-border/60 pb-3">
+              <DialogTitle className="text-base font-semibold flex items-center justify-between">
+                <span>Transaction Receipt</span>
+                <StatusBadge status={selectedTxn?.status} />
+              </DialogTitle>
             </DialogHeader>
+
             {selectedTxn && (
-              <div className="space-y-4 text-sm">
-                <dl className="grid grid-cols-2 gap-y-3 gap-x-4">
-                  <dt className="text-slate-500">Type</dt>
-                  <dd><StatusBadge status={selectedTxn.type} /></dd>
-
-                  <dt className="text-slate-500">Status</dt>
-                  <dd>
-                    <StatusBadge
-                      status={selectedTxn.status === "completed" ? "Successful" : selectedTxn.status.charAt(0).toUpperCase() + selectedTxn.status.slice(1)}
-                    />
-                  </dd>
-
-                  <dt className="text-slate-500">Amount</dt>
-                  <dd className="font-medium">{ngn(selectedTxn.amount)} {selectedTxn.currency && selectedTxn.currency !== "NGN" ? `(${selectedTxn.currency})` : ""}</dd>
-
-                  <dt className="text-slate-500">Method</dt>
-                  <dd>{selectedTxn.paymentMethod || "—"}{selectedTxn.provider ? ` via ${selectedTxn.provider}` : ""}</dd>
-
-                  <dt className="text-slate-500">From</dt>
-                  <dd>
-                    {(() => {
-                      const r = getRoute(selectedTxn);
-                      return r.fromLink ? <Link to={r.fromLink} className="hover:underline">{r.from}</Link> : r.from;
-                    })()}
-                  </dd>
-
-                  <dt className="text-slate-500">To</dt>
-                  <dd>
-                    {(() => {
-                      const r = getRoute(selectedTxn);
-                      return r.toLink ? <Link to={r.toLink} className="hover:underline">{r.to}</Link> : r.to;
-                    })()}
-                  </dd>
-
-                  {selectedTxn.user && (
-                    <>
-                      <dt className="text-slate-500">User</dt>
-                      <dd>{userLabel(selectedTxn)} {selectedTxn.user.email ? `(${selectedTxn.user.email})` : ""}</dd>
-                    </>
-                  )}
-
-                  {selectedTxn.groupId && (
-                    <>
-                      <dt className="text-slate-500">Group</dt>
-                      <dd>
-                        <Link to={`/groups/${selectedTxn.groupId}`} className="hover:underline font-mono text-xs">
-                          {selectedTxn.groupId}
-                        </Link>
-                        {typeof selectedTxn.cycle === "number" && <span className="text-slate-500"> · cycle {selectedTxn.cycle}</span>}
-                      </dd>
-                    </>
-                  )}
-
-                  <dt className="text-slate-500">Created</dt>
-                  <dd>{new Date(selectedTxn.createdAt).toLocaleString("en-NG")}</dd>
-
-                  <dt className="text-slate-500">Updated</dt>
-                  <dd>{new Date(selectedTxn.updatedAt).toLocaleString("en-NG")}</dd>
-                </dl>
-
-                {selectedTxn.metadata && Object.keys(selectedTxn.metadata).length > 0 && (
-                  <div>
-                    <div className="text-slate-500 mb-1">Metadata</div>
-                    <pre className="text-xs bg-slate-50 border border-slate-100 rounded p-3 overflow-x-auto whitespace-pre-wrap">
-                      {JSON.stringify(selectedTxn.metadata, null, 2)}
-                    </pre>
+              <div className="space-y-4 text-xs pt-2">
+                <div className="p-4 rounded-xl bg-brand/10 border border-brand/20 text-center space-y-1">
+                  <span className="text-muted-foreground uppercase font-bold text-[10px]">
+                    Total Amount
+                  </span>
+                  <div className="text-2xl font-extrabold text-brand">
+                    {ngn(selectedTxn.amount)}
                   </div>
-                )}
+                  <span className="font-mono text-[10px] text-muted-foreground block">
+                    Ref: {selectedTxn.reference}
+                  </span>
+                </div>
+
+                <div className="space-y-2 border-t border-border/60 pt-3">
+                  <div className="flex justify-between py-1 border-b border-border/40">
+                    <span className="text-muted-foreground">Category Type</span>
+                    <span className="font-semibold capitalize text-foreground">{selectedTxn.type}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-border/40">
+                    <span className="text-muted-foreground">Payment Channel</span>
+                    <span className="font-semibold text-foreground">
+                      {selectedTxn.paymentMethod || "Direct Transfer"} {selectedTxn.provider ? `(${selectedTxn.provider})` : ""}
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-border/40">
+                    <span className="text-muted-foreground">User Email</span>
+                    <span className="font-medium text-foreground">{selectedTxn.user?.email || "—"}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-border/40">
+                    <span className="text-muted-foreground">Timestamp</span>
+                    <span className="font-medium text-foreground">
+                      {new Date(selectedTxn.createdAt).toLocaleString("en-NG")}
+                    </span>
+                  </div>
+                </div>
               </div>
             )}
           </DialogContent>

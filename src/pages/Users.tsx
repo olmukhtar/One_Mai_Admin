@@ -1,10 +1,11 @@
-// /src/pages/admin/Users.tsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, Link, useLocation, useSearchParams } from "react-router-dom";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { DataTable } from "@/components/admin/DataTable";
 import { StatusBadge } from "@/components/admin/StatusBadge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserCheck, ShieldAlert, Mail, Phone, Calendar } from "lucide-react";
 
 type User = {
   _id: string;
@@ -70,6 +71,12 @@ function nameOf(u: User) {
   return `${(u.firstName || "").trim()} ${(u.lastName || "").trim()}`.trim() || "—";
 }
 
+function initials(name: string) {
+  const parts = name.split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
+
 export default function Users() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -77,7 +84,6 @@ export default function Users() {
   const token = useAuthToken();
   const userRole = useUserRole();
 
-  // Initialize page from URL or default to 1
   const initialPage = parseInt(searchParams.get("page") || "1", 10);
   const [page, setPage] = useState(initialPage);
 
@@ -87,15 +93,14 @@ export default function Users() {
   const [data, setData] = useState<UsersResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [err, setErr] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  // Check permissions
   const hasFullAccess = userRole === "admin" || userRole === "account";
   const hasLimitedView = userRole === "frontDesk";
   const hasReadOnly = userRole === "customerSupport";
   const canViewDetails = hasFullAccess || hasLimitedView || hasReadOnly;
   const canSuspendUsers = hasFullAccess;
 
-  // Sync state with URL
   useEffect(() => {
     const p = parseInt(searchParams.get("page") || "1", 10);
     const s = searchParams.get("search") || "";
@@ -103,19 +108,17 @@ export default function Users() {
     if (s !== searchQuery) setSearchQuery(s);
   }, [searchParams]);
 
-  // Debounce search query
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(searchQuery);
-    }, 500);
+    }, 400);
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
-  // Update URL when debounced search changes
   useEffect(() => {
     const currentSearch = searchParams.get("search") || "";
     if (debouncedSearch !== currentSearch) {
-      setSearchParams(prev => {
+      setSearchParams((prev) => {
         if (debouncedSearch) prev.set("search", debouncedSearch);
         else prev.delete("search");
         prev.set("page", "1");
@@ -125,7 +128,6 @@ export default function Users() {
     }
   }, [debouncedSearch]);
 
-  // Fetch users data
   const fetchUsers = (pageNum: number, search?: string) => {
     if (!token) {
       setErr("Missing auth token. Sign in again.");
@@ -151,7 +153,7 @@ export default function Users() {
           try {
             const j = await res.json();
             if (j?.message) msg = `Failed to load users: ${j.message}`;
-          } catch { }
+          } catch {}
           throw new Error(msg);
         }
         return res.json();
@@ -161,11 +163,10 @@ export default function Users() {
         setData(responseData);
         setAllUsers(responseData.users || []);
 
-        // If API returns a different page (e.g. if we asked for 100 but only 50 exist), sync it
         const actualPage = responseData.currentPage || pageNum;
         if (actualPage !== page) {
           setPage(actualPage);
-          setSearchParams(prev => {
+          setSearchParams((prev) => {
             prev.set("page", String(actualPage));
             return prev;
           });
@@ -179,198 +180,153 @@ export default function Users() {
     return () => controller.abort();
   };
 
-  // Fetch when page, token, or search changes
   useEffect(() => {
     fetchUsers(page, debouncedSearch);
   }, [token, page, debouncedSearch]);
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    // Debounce effect will handle URL update and page reset
   };
 
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= (data?.totalPages || 1)) {
       setPage(newPage);
-      setSearchParams(prev => {
+      setSearchParams((prev) => {
         prev.set("page", String(newPage));
         return prev;
       });
     }
   };
 
-  // Server-side search - no client-side filtering needed
-
-  // Build columns based on role permissions
   const columns = useMemo(() => {
     const baseColumns = [
       {
         key: "name",
-        label: "Name",
-        render: (_: any, row: User) => (
-          <div className="flex items-center gap-2">
-            <img
-              src={row.image || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(nameOf(row))}`}
-              alt={nameOf(row)}
-              className="h-8 w-8 rounded-full object-cover border border-slate-200"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = "none";
-              }}
-            />
-            <div className="flex flex-col">
-              {canViewDetails ? (
-                <Link
-                  to={`/users/${row._id}`}
-                  state={{ from: location }}
-                  className="font-medium text-slate-900 hover:underline"
-                >
-                  {nameOf(row)}
-                </Link>
-              ) : (
-                <span className="font-medium text-slate-900">{nameOf(row)}</span>
-              )}
-              <span className="text-xs text-slate-500">{row.phoneNumber || "—"}</span>
+        label: "User Information",
+        render: (_: any, row: User) => {
+          const name = nameOf(row);
+          return (
+            <div className="flex items-center gap-3">
+              <Avatar className="h-9 w-9 ring-2 ring-brand/10">
+                <AvatarImage src={row.image} alt={name} />
+                <AvatarFallback className="bg-brand/10 text-brand font-bold text-xs">
+                  {initials(name)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col">
+                {canViewDetails ? (
+                  <Link
+                    to={`/users/${row._id}`}
+                    state={{ from: location }}
+                    className="font-semibold text-foreground hover:text-brand transition-colors text-sm"
+                  >
+                    {name}
+                  </Link>
+                ) : (
+                  <span className="font-semibold text-foreground text-sm">{name}</span>
+                )}
+                <span className="text-xs text-muted-foreground">{row.email}</span>
+              </div>
             </div>
-          </div>
-        ),
+          );
+        },
       },
     ];
 
-    // Limited view for Front Desk - show only essential columns
     if (hasLimitedView) {
       return [
         ...baseColumns,
-        { key: "email", label: "Email" },
         {
-          key: "accountStatus",
-          label: "Status",
-          render: (value: string) => <StatusBadge status={value} />,
-        },
-      ];
-    }
-
-    // Read-only for Customer Support - show limited info
-    if (hasReadOnly) {
-      return [
-        ...baseColumns,
-        { key: "email", label: "Email" },
-        {
-          key: "userType",
-          label: "Type",
-          render: (value: string) => <StatusBadge status={value} />,
+          key: "phoneNumber",
+          label: "Phone",
+          render: (v: string) => <span className="text-xs text-muted-foreground">{v || "—"}</span>,
         },
         {
           key: "accountStatus",
           label: "Status",
-          render: (value: string) => <StatusBadge status={value} />,
+          render: (value: string) => <StatusBadge status={value || "active"} />,
         },
       ];
     }
 
-    // Full access for Admin and Account - show all columns
     return [
       ...baseColumns,
-      { key: "email", label: "Email" },
       {
-        key: "userType",
-        label: "Type",
-        render: (value: string) => <StatusBadge status={value} />,
+        key: "phoneNumber",
+        label: "Phone",
+        render: (v: string) => <span className="text-xs text-muted-foreground">{v || "—"}</span>,
       },
       {
         key: "accountStatus",
-        label: "Status",
-        render: (value: string) => <StatusBadge status={value} />,
+        label: "Account Status",
+        render: (value: string) => <StatusBadge status={value || "active"} />,
       },
       {
         key: "isVerified",
-        label: "Verified",
-        render: (v: boolean) => <StatusBadge status={v ? "Verified" : "Unverified"} />,
+        label: "KYC Verification",
+        render: (v: boolean) => (
+          <StatusBadge status={v ? "Verified" : "Unverified"} variant={v ? "success" : "warning"} />
+        ),
       },
       {
         key: "createdAt",
-        label: "Joined",
+        label: "Date Joined",
         render: (_: any, row: User) =>
-          row.createdAt
-            ? new Date(row.createdAt).toLocaleDateString("en-NG", {
-              year: "numeric",
-              month: "short",
-              day: "2-digit",
-            })
-            : "—",
+          row.createdAt ? (
+            <span className="text-xs text-muted-foreground">
+              {new Date(row.createdAt).toLocaleDateString("en-NG", {
+                year: "numeric",
+                month: "short",
+                day: "2-digit",
+              })}
+            </span>
+          ) : (
+            "—"
+          ),
       },
     ];
-  }, [hasFullAccess, hasLimitedView, hasReadOnly, canViewDetails]);
+  }, [hasLimitedView, canViewDetails, location]);
 
   const rows = allUsers.map((u) => ({
     ...u,
     name: nameOf(u),
-    // The list endpoint filters by ?type=normal but doesn't return userType
     userType: u.userType || "normal",
   }));
 
-  // Build action items based on role permissions
   const actionItems = useMemo(() => {
     const actions = [];
-
-    // View Details - available to Admin, Account, Front Desk, and Customer Support
     if (canViewDetails) {
       actions.push({
-        label: "View Details",
+        label: "View Profile & Activity",
         onClick: (row: User) => navigate(`/users/${row._id}`, { state: { from: location } }),
       });
     }
-
-    // Suspend - only available to Admin and Account
     if (canSuspendUsers) {
       actions.push({
-        label: "Suspend",
-        onClick: (row: User) => console.log("Suspend", row._id),
+        label: "Toggle Account Status",
+        onClick: (row: User) => console.log("Suspend user", row._id),
       });
     }
-
     return actions;
-  }, [canViewDetails, canSuspendUsers, navigate]);
+  }, [canViewDetails, canSuspendUsers, navigate, location]);
 
   const totalUsers = data?.totalUsers ?? 0;
   const totalPages = data?.totalPages ?? 1;
   const currentPage = data?.currentPage ?? page;
 
-  // Show access denied message if user doesn't have permission
-  if (!userRole || !canViewDetails) {
-    return (
-      <AdminLayout>
-        <div className="space-y-6">
-          <PageHeader
-            title="Users — Normal"
-            breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Users" }]}
-          />
-          <div className="text-sm text-red-600 bg-red-50 p-4 rounded border border-red-100">
-            You do not have permission to access this page.
-          </div>
-        </div>
-      </AdminLayout>
-    );
-  }
-
   return (
     <AdminLayout>
       <div className="space-y-6">
         <PageHeader
-          title="Users — Normal"
-          breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Users" }]}
+          title="User Directory"
+          subtitle="Manage registered members, review KYC statuses, and inspect user activity profiles."
+          breadcrumbs={[{ label: "Users" }]}
+          showExportButtons
         />
 
         {err && (
-          <div className="text-sm text-red-600 bg-red-50 p-2 rounded border border-red-100">
+          <div className="text-xs font-medium text-rose-600 bg-rose-50 dark:bg-rose-950/40 p-3 rounded-xl border border-rose-200/60 dark:border-rose-800/40">
             {err}
-          </div>
-        )}
-
-        {/* Role indicator for limited access */}
-        {(hasLimitedView || hasReadOnly) && (
-          <div className="text-sm text-blue-600 bg-blue-50 p-2 rounded border border-blue-100">
-            {hasLimitedView && "Limited view mode - Some columns and actions are restricted."}
-            {hasReadOnly && "Read-only mode - You can view user information but cannot make changes."}
           </div>
         )}
 
@@ -383,9 +339,22 @@ export default function Users() {
           totalEntries={totalUsers}
           onPageChange={handlePageChange}
           onSearch={handleSearch}
-          searchPlaceholder="Search users…"
+          searchPlaceholder="Search users by name, email, phone..."
           loading={loading}
-          searchableFields={["name", "email", "phoneNumber", "userType", "accountStatus"]}
+          selectable
+          selectedIds={selectedIds}
+          onSelectedIdsChange={setSelectedIds}
+          bulkActions={[
+            {
+              label: "Export Selected",
+              onClick: (selected) => console.log("Export selected", selected),
+            },
+            {
+              label: "Suspend Selected",
+              variant: "destructive",
+              onClick: (selected) => console.log("Suspend selected", selected),
+            },
+          ]}
         />
       </div>
     </AdminLayout>

@@ -16,7 +16,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { AlertCircle, Loader2, MessageSquarePlus, RefreshCw, UsersRound } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AlertCircle, Loader2, MessageSquarePlus, RefreshCw, UsersRound, Award } from "lucide-react";
 
 import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
 import { API_BASE_URL } from "@/lib/constants";
@@ -110,23 +111,27 @@ function formatDate(value?: string) {
     year: "numeric",
     month: "short",
     day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
   });
 }
 
 function formatMoney(value?: number) {
-  if (typeof value !== "number" || Number.isNaN(value)) return "—";
+  if (typeof value !== "number" || Number.isNaN(value)) return "₦0";
   return new Intl.NumberFormat("en-NG", {
     style: "currency",
     currency: "NGN",
-    maximumFractionDigits: 2,
+    maximumFractionDigits: 0,
   }).format(value);
 }
 
 function buildName(input: any) {
   const name = [input?.firstName, input?.lastName].filter(Boolean).join(" ").trim();
   return name || input?.name || input?.email || "—";
+}
+
+function initials(name: string) {
+  const parts = name.split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return name.slice(0, 2).toUpperCase();
 }
 
 function unwrapArray(payload: any, preferredKeys: string[]) {
@@ -378,56 +383,57 @@ export default function Affiliates() {
 
   useEffect(() => {
     fetchAffiliates();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, token, canView]);
 
   const columns = useMemo(
     () => [
       {
         key: "name",
-        label: "Affiliate",
+        label: "Affiliate Partner",
         render: (_: unknown, row: AffiliateRow) => (
           <div className="flex items-center gap-3">
-            <img
-              src={row.image || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(row.name)}`}
-              alt={row.name}
-              className="h-9 w-9 rounded-full border border-slate-200 object-cover"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = "none";
-              }}
-            />
-            <div className="min-w-0">
-              <div className="font-medium text-slate-900">{row.name}</div>
-              <div className="text-xs text-slate-500">{row.phoneNumber}</div>
+            <Avatar className="h-9 w-9 ring-2 ring-brand/10">
+              <AvatarImage src={row.image} alt={row.name} />
+              <AvatarFallback className="bg-brand/10 text-brand font-bold text-xs">
+                {initials(row.name)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col">
+              <span className="font-semibold text-foreground text-sm">{row.name}</span>
+              <span className="text-xs text-muted-foreground font-mono">{row.email}</span>
             </div>
           </div>
         ),
       },
-      { key: "email", label: "Email" },
       {
         key: "accountStatus",
         label: "Status",
         render: (value: string, row: AffiliateRow) => (
           <div className="space-y-1">
             <StatusBadge status={value} />
-            <div className="text-xs text-slate-500">{row.isVerified ? "Verified" : "Unverified"}</div>
           </div>
         ),
       },
       {
         key: "totalReferrals",
-        label: "Referrals",
-        render: (value: number | undefined) => value ?? "—",
+        label: "Total Referrals",
+        render: (value: number | undefined) => (
+          <span className="font-bold text-xs text-foreground">{value ?? 0}</span>
+        ),
       },
       {
         key: "payoutBalance",
-        label: "Payout Balance",
-        render: (value: number | undefined) => formatMoney(value),
+        label: "Commission Balance",
+        render: (value: number | undefined) => (
+          <span className="font-bold text-xs text-brand">{formatMoney(value)}</span>
+        ),
       },
       {
         key: "createdAt",
-        label: "Joined",
-        render: (value: string | undefined) => formatDate(value),
+        label: "Joined Date",
+        render: (value: string | undefined) => (
+          <span className="text-xs text-muted-foreground">{formatDate(value)}</span>
+        ),
       },
     ],
     []
@@ -436,15 +442,15 @@ export default function Affiliates() {
   const actionItems = useMemo(
     () => [
       {
-        label: "View Referrals",
+        label: "Inspect Referral List",
         onClick: (row: AffiliateRow) => fetchReferrals(row),
       },
       {
-        label: "View Remarks",
+        label: "View Admin Remarks",
         onClick: (row: AffiliateRow) => fetchRemarks(row),
       },
       {
-        label: "Add Remark",
+        label: "Add Admin Remark",
         onClick: (row: AffiliateRow) => {
           setSelectedAffiliate(row);
           setRemarkText("");
@@ -456,40 +462,31 @@ export default function Affiliates() {
     [canManageRemarks]
   );
 
-  if (!canView) {
-    return (
-      <AdminLayout>
-        <div className="space-y-6">
-          <PageHeader
-            title="Affiliates"
-            breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Affiliates" }]}
-          />
-          <div className="rounded border border-red-100 bg-red-50 p-4 text-sm text-red-600">
-            You do not have permission to access this page.
-          </div>
-        </div>
-      </AdminLayout>
-    );
-  }
-
   return (
     <AdminLayout>
       <div className="space-y-6">
         <PageHeader
-          title="Affiliates"
-          breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Affiliates" }]}
+          title="Affiliate Partners Directory"
+          subtitle="Inspect partner referral counts, commission balance, and administrative remarks."
+          breadcrumbs={[{ label: "Affiliates" }]}
+          showExportButtons
           rightSlot={
-            <Button variant="outline" onClick={fetchAffiliates} disabled={loading}>
-              <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-              Refresh
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchAffiliates}
+              disabled={loading}
+              className="h-9 gap-1.5 rounded-xl border-border/80 text-xs font-medium"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+              Refresh Directory
             </Button>
           }
         />
 
         {err && (
-          <div className="flex items-center gap-2 rounded border border-red-100 bg-red-50 p-3 text-sm text-red-600">
-            <AlertCircle className="h-4 w-4 flex-shrink-0" />
-            <span>{err}</span>
+          <div className="text-xs font-medium text-rose-600 bg-rose-50 dark:bg-rose-950/40 p-3 rounded-xl border border-rose-200/60 dark:border-rose-800/40">
+            {err}
           </div>
         )}
 
@@ -501,151 +498,116 @@ export default function Affiliates() {
           totalPages={totalPages}
           totalEntries={totalEntries}
           onPageChange={setPage}
-          searchPlaceholder="Search affiliates on this page..."
           loading={loading}
-          searchableFields={["name", "email", "phoneNumber", "accountStatus", "referralCode"]}
         />
       </div>
 
+      {/* Referrals Dialog */}
       <Dialog open={referralsOpen} onOpenChange={setReferralsOpen}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>{selectedAffiliate?.name || "Affiliate"} Referrals</DialogTitle>
-            <DialogDescription>
-              Referral activity pulled from the admin affiliate referrals endpoint.
-            </DialogDescription>
+        <DialogContent className="max-w-3xl rounded-2xl border border-border shadow-2xl bg-card p-6">
+          <DialogHeader className="border-b border-border/60 pb-3">
+            <DialogTitle className="text-base font-semibold">
+              Referrals for {selectedAffiliate?.name}
+            </DialogTitle>
           </DialogHeader>
 
           {referralsLoading ? (
-            <div className="flex min-h-[220px] items-center justify-center">
-              <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
+            <div className="py-12 text-center text-xs text-muted-foreground animate-pulse">
+              Loading referral list...
             </div>
-          ) : referralsError ? (
-            <div className="rounded border border-red-100 bg-red-50 p-3 text-sm text-red-600">{referralsError}</div>
-          ) : referrals.length === 0 ? (
-            <Card className="border border-slate-200">
-              <CardContent className="flex min-h-[220px] flex-col items-center justify-center gap-3 text-center">
-                <UsersRound className="h-8 w-8 text-slate-400" />
-                <div>
-                  <p className="font-medium text-slate-900">No referrals found</p>
-                  <p className="text-sm text-slate-500">This affiliate does not have referral records yet.</p>
-                </div>
-              </CardContent>
-            </Card>
           ) : (
             <DataTable
               columns={[
-                { key: "name", label: "User" },
+                { key: "name", label: "Referred User" },
                 { key: "email", label: "Email" },
                 {
                   key: "status",
                   label: "Status",
-                  render: (value: string) => <StatusBadge status={value} />,
+                  render: (v: string) => <StatusBadge status={v} />,
                 },
                 {
                   key: "reward",
-                  label: "Reward",
-                  render: (value: number | string | undefined) =>
-                    typeof value === "number" ? formatMoney(value) : value || "—",
-                },
-                {
-                  key: "joinedAt",
-                  label: "Joined",
-                  render: (value: string | undefined) => formatDate(value),
+                  label: "Commission Earned",
+                  render: (v: any) => (
+                    <span className="font-bold text-brand">{formatMoney(Number(v) || 0)}</span>
+                  ),
                 },
               ]}
               data={referrals}
               showActions={false}
-              totalEntries={referrals.length}
-              totalPages={1}
-              currentPage={1}
             />
           )}
         </DialogContent>
       </Dialog>
 
+      {/* Remarks Dialog */}
       <Dialog open={remarksOpen} onOpenChange={setRemarksOpen}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>{selectedAffiliate?.name || "Affiliate"} Remarks</DialogTitle>
-            <DialogDescription>Internal notes from the admin remarks endpoint.</DialogDescription>
+        <DialogContent className="max-w-xl rounded-2xl border border-border shadow-2xl bg-card p-6">
+          <DialogHeader className="border-b border-border/60 pb-3">
+            <DialogTitle className="text-base font-semibold">
+              Internal Admin Remarks for {selectedAffiliate?.name}
+            </DialogTitle>
           </DialogHeader>
 
           {remarksLoading ? (
-            <div className="flex min-h-[220px] items-center justify-center">
-              <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
+            <div className="py-12 text-center text-xs text-muted-foreground animate-pulse">
+              Loading internal remarks...
             </div>
-          ) : remarksError ? (
-            <div className="rounded border border-red-100 bg-red-50 p-3 text-sm text-red-600">{remarksError}</div>
           ) : remarks.length === 0 ? (
-            <Card className="border border-slate-200">
-              <CardContent className="flex min-h-[220px] flex-col items-center justify-center gap-3 text-center">
-                <MessageSquarePlus className="h-8 w-8 text-slate-400" />
-                <div>
-                  <p className="font-medium text-slate-900">No remarks yet</p>
-                  <p className="text-sm text-slate-500">There are no internal remarks saved for this affiliate.</p>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="py-8 text-center text-xs text-muted-foreground">
+              No internal remarks recorded.
+            </div>
           ) : (
-            <div className="space-y-3">
-              {remarks.map((remark) => (
-                <Card key={remark._id} className="border border-slate-200">
-                  <CardContent className="space-y-2 p-4">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="font-medium text-slate-900">{remark.adminName}</div>
-                      <div className="text-xs text-slate-500">{formatDate(remark.createdAt)}</div>
-                    </div>
-                    <p className="text-sm leading-6 text-slate-600">{remark.remark}</p>
-                  </CardContent>
-                </Card>
+            <div className="space-y-3 pt-2">
+              {remarks.map((r) => (
+                <div key={r._id} className="p-3 rounded-xl bg-muted/40 border border-border/60 space-y-1">
+                  <div className="flex justify-between items-center text-xs font-semibold">
+                    <span className="text-brand">{r.adminName}</span>
+                    <span className="text-muted-foreground text-[10px]">{formatDate(r.createdAt)}</span>
+                  </div>
+                  <p className="text-xs text-foreground">{r.remark}</p>
+                </div>
               ))}
             </div>
           )}
         </DialogContent>
       </Dialog>
 
+      {/* Add Remark Dialog */}
       <Dialog open={addRemarkOpen} onOpenChange={setAddRemarkOpen}>
-        <DialogContent className="max-w-xl">
-          <DialogHeader>
-            <DialogTitle>Add Affiliate Remark</DialogTitle>
-            <DialogDescription>
-              This submits to `/api/admin/affiliate/remark/add` for {selectedAffiliate?.name || "the selected affiliate"}.
-            </DialogDescription>
+        <DialogContent className="max-w-md rounded-2xl border border-border shadow-2xl bg-card p-6">
+          <DialogHeader className="border-b border-border/60 pb-3">
+            <DialogTitle className="text-base font-semibold">Add Internal Remark</DialogTitle>
           </DialogHeader>
-
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="affiliate-name">Affiliate</Label>
-              <Input id="affiliate-name" value={selectedAffiliate?.name || ""} disabled />
+          <div className="space-y-4 pt-3">
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Affiliate Partner</Label>
+              <Input value={selectedAffiliate?.name || ""} disabled className="h-9 rounded-xl text-xs" />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="remark-text">Remark</Label>
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Note / Remark</Label>
               <Textarea
-                id="remark-text"
-                rows={5}
+                rows={4}
                 value={remarkText}
                 onChange={(e) => setRemarkText(e.target.value)}
-                placeholder="Write an internal note about this affiliate..."
+                placeholder="Write an internal note..."
+                className="rounded-xl text-xs"
               />
             </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="ghost" size="sm" onClick={() => setAddRemarkOpen(false)} className="rounded-xl text-xs">
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleAddRemark}
+                disabled={submittingRemark}
+                className="bg-brand hover:bg-brand-hover text-white rounded-xl text-xs font-semibold"
+              >
+                {submittingRemark ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Remark"}
+              </Button>
+            </div>
           </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddRemarkOpen(false)} disabled={submittingRemark}>
-              Cancel
-            </Button>
-            <Button onClick={handleAddRemark} disabled={submittingRemark || !canManageRemarks}>
-              {submittingRemark ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                "Save Remark"
-              )}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </AdminLayout>

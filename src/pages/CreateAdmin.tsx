@@ -1,8 +1,8 @@
-// src/pages/CreateAdmin.tsx
 import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { PageHeader } from "@/components/admin/PageHeader";
+import { DataTable } from "@/components/admin/DataTable";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,8 +22,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Eye, EyeOff, ShieldAlert, Pencil, Trash2, Plus, Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import { Eye, EyeOff, ShieldAlert, Pencil, Trash2, Plus, Loader2, UserPlus, ShieldCheck } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
 import { API_BASE_URL } from "@/lib/constants";
 
@@ -80,17 +80,16 @@ export default function CreateAdmin() {
   const token = useToken();
   const currentUserRole = useUserRole();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [loadingAdmins, setLoadingAdmins] = useState(true);
 
-  // Create Form State
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [selectedRole, setSelectedRole] = useState("");
 
-  // Roles
   const [roles, setRoles] = useState<Role[]>([]);
   const [loadingRoles, setLoadingRoles] = useState(true);
 
@@ -98,15 +97,13 @@ export default function CreateAdmin() {
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  // Edit Modal State
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingAdmin, setEditingAdmin] = useState<AdminUser | null>(null);
   const [editName, setEditName] = useState("");
-  const [editEmail, setEditEmail] = useState(""); // usually email is immutable, but let's see
+  const [editEmail, setEditEmail] = useState("");
   const [editRole, setEditRole] = useState("");
   const [updating, setUpdating] = useState(false);
 
-  // Checks
   const hasAccess = currentUserRole === "admin";
 
   useEffect(() => {
@@ -115,7 +112,6 @@ export default function CreateAdmin() {
     }
   }, [token, navigate]);
 
-  // Fetch roles and admins
   useEffect(() => {
     if (!token || !hasAccess) {
       setLoadingRoles(false);
@@ -125,7 +121,6 @@ export default function CreateAdmin() {
 
     async function fetchData() {
       try {
-        // Fetch Roles
         const roleRes = await apiFetch(ROLES_ENDPOINT);
         if (roleRes.ok) {
           const roleData = await roleRes.json();
@@ -135,7 +130,6 @@ export default function CreateAdmin() {
           }
         }
 
-        // Fetch Admins
         const adminRes = await apiFetch(FETCH_ADMINS_ENDPOINT);
         if (adminRes.ok) {
           const adminData = await adminRes.json();
@@ -146,8 +140,11 @@ export default function CreateAdmin() {
           }
         }
       } catch (e: any) {
-        console.error(e);
-        toast.error("Failed to load initial data");
+        toast({
+          title: "Error",
+          description: "Failed to load admin user directory.",
+          variant: "destructive",
+        });
       } finally {
         setLoadingRoles(false);
         setLoadingAdmins(false);
@@ -168,18 +165,15 @@ export default function CreateAdmin() {
           setAdmins(list);
         }
       }
-    } catch {
-      // silent fail
-    }
+    } catch {}
   }
 
-  // --- CREATE ---
   function validateCreate() {
-    if (!name.trim()) return "Name is required";
-    if (!email.trim()) return "Email is required";
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return "Enter a valid email";
+    if (!name.trim()) return "Full name is required";
+    if (!email.trim()) return "Email address is required";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return "Enter a valid email address";
     if (!password || password.length < 8) return "Password must be at least 8 characters";
-    if (!selectedRole) return "Role is required";
+    if (!selectedRole) return "Admin role is required";
     return null;
   }
 
@@ -190,7 +184,7 @@ export default function CreateAdmin() {
     const v = validateCreate();
     if (v) {
       setErr(v);
-      toast.error(v);
+      toast({ title: "Validation Error", description: v, variant: "destructive" });
       return;
     }
 
@@ -205,7 +199,7 @@ export default function CreateAdmin() {
           name: name.trim(),
           email: email.trim(),
           password,
-          role: selectedRole
+          role: selectedRole,
         }),
       });
 
@@ -215,8 +209,11 @@ export default function CreateAdmin() {
         throw new Error(json.message || "Failed to create admin");
       }
 
-      toast.success("Admin created successfully");
-      // Clear form
+      toast({
+        title: "Admin Account Created",
+        description: `Successfully provisioned ${email} as ${selectedRole}.`,
+      });
+
       setName("");
       setEmail("");
       setPassword("");
@@ -224,15 +221,14 @@ export default function CreateAdmin() {
       refreshAdmins();
     } catch (e: any) {
       setErr(e.message);
-      toast.error(e.message);
+      toast({ title: "Creation Failed", description: e.message, variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
   }
 
-  // --- DELETE ---
   async function onDelete(admin: AdminUser) {
-    if (!confirm(`Are you sure you want to delete admin "${admin.name || admin.email}"?`)) return;
+    if (!confirm(`Permanently remove admin account for ${admin.name || admin.email}?`)) return;
 
     try {
       const res = await apiFetch(DELETE_ENDPOINT(admin._id), {
@@ -244,14 +240,16 @@ export default function CreateAdmin() {
         throw new Error(json.message || "Failed to delete admin");
       }
 
-      toast.success("Admin deleted successfully");
+      toast({
+        title: "Admin Removed",
+        description: "Administrative account deleted.",
+      });
       refreshAdmins();
     } catch (e: any) {
-      toast.error(e.message);
+      toast({ title: "Deletion Error", description: e.message, variant: "destructive" });
     }
   }
 
-  // --- UPDATE ---
   function openEdit(admin: AdminUser) {
     setEditingAdmin(admin);
     setEditName(admin.name || `${admin.firstName || ""} ${admin.lastName || ""}`.trim());
@@ -272,7 +270,7 @@ export default function CreateAdmin() {
         body: JSON.stringify({
           name: editName,
           email: editEmail,
-          role: editRole
+          role: editRole,
         }),
       });
 
@@ -282,13 +280,15 @@ export default function CreateAdmin() {
         throw new Error(json.message || "Failed to update admin");
       }
 
-      toast.success("Admin updated successfully");
+      toast({
+        title: "Admin Updated",
+        description: `Account permissions saved for ${editEmail}.`,
+      });
       setIsEditOpen(false);
       setEditingAdmin(null);
       refreshAdmins();
-
     } catch (e: any) {
-      toast.error(e.message);
+      toast({ title: "Update Failed", description: e.message, variant: "destructive" });
     } finally {
       setUpdating(false);
     }
@@ -300,224 +300,197 @@ export default function CreateAdmin() {
         <div className="space-y-6">
           <PageHeader
             title="Admin Management"
-            breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Admin Management" }]}
-            searchPlaceholder=""
-            showSearch={false}
+            breadcrumbs={[{ label: "Admin Management" }]}
           />
-          <Card className="max-w-2xl border border-slate-100 shadow-sm rounded-xl">
-            <CardContent className="pt-6">
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="rounded-full bg-red-100 p-3 mb-4">
-                  <ShieldAlert className="h-8 w-8 text-red-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Access Denied</h3>
-                <p className="text-sm text-gray-600 mb-6 max-w-md">
-                  You don't have permission to manage admin accounts.
-                </p>
-                <Button onClick={() => navigate("/dashboard")} variant="outline">
-                  Return to Dashboard
-                </Button>
-              </div>
-            </CardContent>
+          <Card className="max-w-xl border border-border shadow-sm rounded-2xl p-6 bg-card">
+            <div className="flex flex-col items-center justify-center text-center space-y-3">
+              <ShieldAlert className="h-8 w-8 text-rose-600" />
+              <h3 className="text-base font-bold text-foreground">Access Restricted</h3>
+              <p className="text-xs text-muted-foreground">
+                Provisioning administrative roles is restricted exclusively to System Super Admins.
+              </p>
+              <Button onClick={() => navigate("/dashboard")} variant="outline" className="rounded-xl text-xs">
+                Back to Dashboard
+              </Button>
+            </div>
           </Card>
         </div>
       </AdminLayout>
     );
   }
 
+  const columns = [
+    {
+      key: "name",
+      label: "Admin Officer",
+      render: (_: any, row: AdminUser) => (
+        <div className="flex items-center gap-2.5">
+          <div className="h-8 w-8 rounded-full bg-brand/10 text-brand flex items-center justify-center font-bold text-xs">
+            {(row.name || row.email).charAt(0).toUpperCase()}
+          </div>
+          <div className="flex flex-col">
+            <span className="font-bold text-xs text-foreground">{row.name || "—"}</span>
+            <span className="text-[11px] text-muted-foreground font-mono">{row.email}</span>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "role",
+      label: "Assigned Role",
+      render: (v: string) => (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-brand/10 text-brand font-bold text-[11px]">
+          <ShieldCheck className="h-3 w-3" /> {v}
+        </span>
+      ),
+    },
+    {
+      key: "createdAt",
+      label: "Date Created",
+      render: (v: string) => (
+        <span className="text-xs text-muted-foreground">
+          {v ? new Date(v).toLocaleDateString("en-NG", { month: "short", day: "2-digit", year: "numeric" }) : "—"}
+        </span>
+      ),
+    },
+  ];
+
   return (
     <AdminLayout>
-      <div className="space-y-8">
+      <div className="space-y-6">
         <PageHeader
-          title="Admin Management"
-          breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Admins" }]}
-          searchPlaceholder=""
-          showSearch={false}
+          title="Administrative Access Control"
+          subtitle="Provision new team members, grant RBAC privileges, and manage admin accounts."
+          breadcrumbs={[{ label: "Admin Management" }]}
         />
 
-        {/* Create Admin Form */}
-        <Card className="border border-slate-100 shadow-sm rounded-xl">
-          <CardHeader className="pb-3 border-b border-slate-50">
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Plus className="h-4 w-4" /> Create New Admin
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6">
-            {err && (
-              <div className="mb-4 text-sm text-red-600 bg-red-50 p-2 rounded border border-red-100">
-                {err}
-              </div>
-            )}
-            <form onSubmit={onCreate} className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 items-end">
-              <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
-                <Input
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="name"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@example.com"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPw ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPw((s) => !s)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-slate-700"
-                  >
-                    {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="role">Role</Label>
-                <Select value={selectedRole} onValueChange={setSelectedRole} disabled={loadingRoles}>
-                  <SelectTrigger id="role">
-                    <SelectValue placeholder={loadingRoles ? "Loading..." : "Select Role"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {roles.map((r) => (
-                      <SelectItem key={r.value} value={r.value}>
-                        {r.label.charAt(0).toUpperCase() + r.label.slice(1)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+        {/* Provision Form Card */}
+        <Card className="border border-border/80 shadow-sm rounded-2xl bg-card p-6">
+          <div className="border-b border-border/60 pb-3 mb-4">
+            <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
+              <UserPlus className="h-4 w-4 text-brand" /> Provision New Administrator
+            </h3>
+          </div>
 
-              <div className="col-span-1 md:col-span-2 lg:col-span-4 flex justify-end">
-                <Button type="submit" disabled={submitting}>
-                  {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                  Create Admin
-                </Button>
+          {err && (
+            <div className="mb-4 text-xs font-medium text-rose-600 bg-rose-50 dark:bg-rose-950/40 p-3 rounded-xl border border-rose-200/60">
+              {err}
+            </div>
+          )}
+
+          <form onSubmit={onCreate} className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 items-end text-xs">
+            <div className="space-y-1">
+              <Label className="font-semibold text-foreground">Full Name</Label>
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Officer Full Name"
+                className="h-10 rounded-xl"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="font-semibold text-foreground">Email Address</Label>
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="admin@onemai.ng"
+                className="h-10 rounded-xl"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="font-semibold text-foreground">Initial Password</Label>
+              <div className="relative">
+                <Input
+                  type={showPw ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="h-10 pr-10 rounded-xl"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw((s) => !s)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
-            </form>
-          </CardContent>
+            </div>
+            <div className="space-y-1">
+              <Label className="font-semibold text-foreground">Privilege Role</Label>
+              <Select value={selectedRole} onValueChange={setSelectedRole} disabled={loadingRoles}>
+                <SelectTrigger className="h-10 rounded-xl text-xs bg-background">
+                  <SelectValue placeholder={loadingRoles ? "Loading roles..." : "Select Role"} />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  {roles.map((r) => (
+                    <SelectItem key={r.value} value={r.value}>
+                      {r.label.charAt(0).toUpperCase() + r.label.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="col-span-1 md:col-span-2 lg:col-span-4 flex justify-end pt-2">
+              <Button
+                type="submit"
+                disabled={submitting}
+                className="h-9 px-5 bg-brand hover:bg-brand-hover text-white rounded-xl font-semibold text-xs shadow-md"
+              >
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Provision Admin Account
+              </Button>
+            </div>
+          </form>
         </Card>
 
-        {/* Admins List */}
-        <Card className="border border-slate-100 shadow-sm rounded-xl">
-          <CardHeader className="pb-3 border-b border-slate-50">
-            <CardTitle className="text-base font-semibold">Existing Admins</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            {loadingAdmins ? (
-              <div className="p-8 text-center text-slate-500">Loading admins...</div>
-            ) : admins.length === 0 ? (
-              <div className="p-8 text-center text-slate-500">No admins found.</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-slate-50 text-slate-500 font-medium">
-                    <tr>
-                      <th className="px-4 py-3">Name</th>
-                      <th className="px-4 py-3">Email</th>
-                      <th className="px-4 py-3">Role</th>
-                      <th className="px-4 py-3">Created</th>
-                      <th className="px-4 py-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {admins.map((admin) => (
-                      <tr key={admin._id} className="hover:bg-slate-50/50">
-                        <td className="px-4 py-3 font-medium text-slate-900">
-                          {admin.name || admin.firstName || "—"}
-                        </td>
-                        <td className="px-4 py-3 text-slate-600 font-mono text-xs">
-                          {admin.email}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            {admin.role}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-slate-500">
-                          {admin.createdAt ? new Date(admin.createdAt).toLocaleDateString() : "—"}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                              onClick={() => openEdit(admin)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => onDelete(admin)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Directory Table */}
+        <DataTable
+          columns={columns}
+          data={admins}
+          actionItems={[
+            { label: "Edit Role & Info", onClick: (row: AdminUser) => openEdit(row) },
+            { label: "Revoke Access", onClick: (row: AdminUser) => onDelete(row) },
+          ]}
+          loading={loadingAdmins}
+          totalEntries={admins.length}
+        />
 
         {/* Edit Modal */}
-        <Dialog open={isEditOpen} onOpenChange={(open) => {
-          if (!open) {
-            setIsEditOpen(false);
-            setEditingAdmin(null);
-          }
-        }}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Edit Admin</DialogTitle>
-              <DialogDescription>Update details for {editingAdmin?.email}</DialogDescription>
+        <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+          <DialogContent className="max-w-md rounded-2xl border border-border shadow-2xl bg-card p-6">
+            <DialogHeader className="border-b border-border/60 pb-3">
+              <DialogTitle className="text-base font-semibold">
+                Edit Admin Account ({editingAdmin?.email})
+              </DialogTitle>
             </DialogHeader>
-            <form onSubmit={onUpdate} className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-name">Name</Label>
+
+            <form onSubmit={onUpdate} className="space-y-4 pt-3 text-xs">
+              <div className="space-y-1">
+                <Label className="font-semibold">Full Name</Label>
                 <Input
-                  id="edit-name"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
+                  className="h-9 rounded-xl text-xs"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-email">Email</Label>
+              <div className="space-y-1">
+                <Label className="font-semibold">Email Address</Label>
                 <Input
-                  id="edit-email"
                   value={editEmail}
                   onChange={(e) => setEditEmail(e.target.value)}
+                  className="h-9 rounded-xl text-xs"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-role">Role</Label>
+              <div className="space-y-1">
+                <Label className="font-semibold">Privilege Role</Label>
                 <Select value={editRole} onValueChange={setEditRole}>
-                  <SelectTrigger id="edit-role">
+                  <SelectTrigger className="h-9 rounded-xl text-xs">
                     <SelectValue placeholder="Select Role" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="rounded-xl">
                     {roles.map((r) => (
                       <SelectItem key={r.value} value={r.value}>
                         {r.label.charAt(0).toUpperCase() + r.label.slice(1)}
@@ -526,19 +499,28 @@ export default function CreateAdmin() {
                   </SelectContent>
                 </Select>
               </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsEditOpen(false)}>
+
+              <DialogFooter className="pt-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsEditOpen(false)}
+                  className="rounded-xl text-xs"
+                >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={updating}>
-                  {updating && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                  Save Changes
+                <Button
+                  type="submit"
+                  disabled={updating}
+                  className="bg-brand hover:bg-brand-hover text-white rounded-xl text-xs font-semibold"
+                >
+                  {updating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Changes"}
                 </Button>
               </DialogFooter>
             </form>
           </DialogContent>
         </Dialog>
-
       </div>
     </AdminLayout>
   );

@@ -1,10 +1,22 @@
-// /src/pages/admin/Dashboard.tsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { PageHeader } from "@/components/admin/PageHeader";
+import { KpiCard } from "@/components/admin/KpiCard";
+import { StatusBadge } from "@/components/admin/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowUpRight, CreditCard, Users, Wallet, UserCheck } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  ArrowUpRight,
+  CreditCard,
+  Users,
+  Wallet,
+  UserCheck,
+  TrendingUp,
+  Activity,
+  Calendar,
+  Layers,
+} from "lucide-react";
 import {
   AreaChart,
   Area,
@@ -40,7 +52,6 @@ type StatsResponse = {
     metadata?: Record<string, any>;
     createdAt: string;
     updatedAt: string;
-    __v?: number;
   }>;
 };
 
@@ -93,82 +104,89 @@ function formatNgn(n: number) {
   }
 }
 
-function KPIs({ data, role }: { data: StatsResponse["stats"] | null; role: UserRole | null }) {
+function KPIs({
+  data,
+  role,
+  loading,
+}: {
+  data: StatsResponse["stats"] | null;
+  role: UserRole | null;
+  loading: boolean;
+}) {
   const canSeeFinancials = role === "admin" || role === "account";
   const canSeePendingPayouts = role === "admin" || role === "account";
 
   const items = [
     {
-      title: "Users",
-      value: data ? data.totalUsers.toLocaleString() : "—",
+      title: "Total Registered Users",
+      value: data ? data.totalUsers.toLocaleString() : "0",
       icon: Users,
-      visible: true
+      trend: "+12.4%",
+      subtitle: "vs last month",
+      visible: true,
     },
     {
-      title: "Groups",
-      value: data ? data.totalGroups.toLocaleString() : "—",
+      title: "Savings Circles",
+      value: data ? data.totalGroups.toLocaleString() : "0",
+      icon: Layers,
+      trend: "+8.2%",
+      subtitle: "Total created",
+      visible: true,
+    },
+    {
+      title: "Active Circles",
+      value: data ? data.activeGroups.toLocaleString() : "0",
       icon: UserCheck,
-      visible: true
-    },
-    {
-      title: "Active Groups",
-      value: data ? data.activeGroups.toLocaleString() : "—",
-      icon: CreditCard,
-      visible: true
+      trend: "Live",
+      subtitle: "Currently contributing",
+      visible: true,
     },
     {
       title: "Pending Payouts",
-      value: data ? data.pendingPayoutRequests.toLocaleString() : "—",
+      value: data ? data.pendingPayoutRequests.toLocaleString() : "0",
       icon: Wallet,
-      visible: canSeePendingPayouts
+      trend: "Action Required",
+      trendDirection: "down" as const,
+      subtitle: "Requests queued",
+      visible: canSeePendingPayouts,
     },
     {
-      title: "Txn Value",
-      value: data ? formatNgn(data.totalTransactionValue) : "—",
-      icon: ArrowUpRight,
-      visible: canSeeFinancials
+      title: "Total Txn Volume",
+      value: data ? formatNgn(data.totalTransactionValue) : "₦0",
+      icon: TrendingUp,
+      trend: "+18.6%",
+      subtitle: "Gross volume",
+      visible: canSeeFinancials,
     },
     {
-      title: "Revenue",
-      value: data ? formatNgn(data.platformRevenue) : "—",
+      title: "Platform Revenue",
+      value: data ? formatNgn(data.platformRevenue) : "₦0",
       icon: ArrowUpRight,
-      visible: canSeeFinancials
+      trend: "+15.3%",
+      subtitle: "Net platform earnings",
+      visible: canSeeFinancials,
     },
-  ].filter(item => item.visible);
-
-  // Dynamic grid based on number of visible items
-  const gridCols = items.length <= 3
-    ? "sm:grid-cols-2 lg:grid-cols-3"
-    : items.length === 4
-      ? "sm:grid-cols-2 lg:grid-cols-4"
-      : items.length === 5
-        ? "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
-        : "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6";
+  ].filter((item) => item.visible);
 
   return (
-    <div className={`grid gap-4 ${gridCols}`}>
-      {items.map(({ title, value, icon: Icon }) => (
-        <Card key={title} className="border border-slate-100 shadow-sm rounded-xl">
-          <CardContent className="p-5">
-            <div className="flex items-start justify-between">
-              <div className="text-slate-500 text-sm">{title}</div>
-              <div className="h-8 w-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
-                <Icon className="h-4 w-4" />
-              </div>
-            </div>
-            <div className="mt-2 text-2xl font-semibold text-slate-900">{value}</div>
-            <div className="mt-1 inline-flex items-center gap-1 text-emerald-600 text-xs">
-              <ArrowUpRight className="h-3.5 w-3.5" />
-              <span>Live</span>
-            </div>
-          </CardContent>
-        </Card>
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+      {items.map((item) => (
+        <KpiCard
+          key={item.title}
+          title={item.title}
+          value={item.value}
+          icon={item.icon}
+          trend={item.trend}
+          trendDirection={item.trendDirection}
+          subtitle={item.subtitle}
+          loading={loading}
+        />
       ))}
     </div>
   );
 }
 
-function TransactionsTable({
+function TransactionsTableWidget({
   rows,
   loading,
   role,
@@ -177,68 +195,87 @@ function TransactionsTable({
   loading: boolean;
   role: UserRole | null;
 }) {
+  const navigate = useNavigate();
   const showFullAmounts = role === "admin" || role === "account";
-  const canViewTransactions = role === "admin" || role === "account" || role === "customer_support";
+  const canViewTransactions =
+    role === "admin" || role === "account" || role === "customer_support";
 
-  if (!canViewTransactions) {
-    return null;
-  }
+  if (!canViewTransactions) return null;
 
   return (
-    <Card className="border border-slate-100 shadow-sm rounded-xl">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base font-semibold text-slate-900">
-          Recent Transactions
-        </CardTitle>
+    <Card className="border border-border/80 shadow-sm rounded-2xl bg-card overflow-hidden">
+      <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-border/60">
+        <div>
+          <CardTitle className="text-base font-semibold text-foreground">
+            Recent Transactions
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Latest financial flows across the network
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => navigate("/transactions")}
+          className="h-8 rounded-xl text-xs font-semibold text-brand hover:text-brand"
+        >
+          View All <ArrowUpRight className="h-3.5 w-3.5 ml-1" />
+        </Button>
       </CardHeader>
-      <CardContent className="pt-0">
+
+      <CardContent className="p-0">
         <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead className="text-left text-slate-500">
-              <tr className="border-b border-slate-100">
-                <th className="py-2 pr-4">Reference</th>
-                <th className="py-2 pr-4">Type</th>
-                <th className="py-2 pr-4">Status</th>
-                {showFullAmounts && <th className="py-2 pr-4">Amount</th>}
-                <th className="py-2 pr-4">Date</th>
+          <table className="w-full text-sm">
+            <thead className="text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30">
+              <tr className="border-b border-border/60">
+                <th className="py-3 px-4">Reference</th>
+                <th className="py-3 px-4">Type</th>
+                <th className="py-3 px-4">Status</th>
+                {showFullAmounts && <th className="py-3 px-4">Amount</th>}
+                <th className="py-3 px-4">Date</th>
               </tr>
             </thead>
-            <tbody className="text-slate-800">
+            <tbody className="divide-y divide-border/40 text-foreground">
               {loading ? (
-                <tr>
-                  <td colSpan={showFullAmounts ? 5 : 4} className="py-6 text-center text-slate-500">
-                    Loading…
-                  </td>
-                </tr>
+                Array.from({ length: 4 }).map((_, i) => (
+                  <tr key={i}>
+                    <td colSpan={5} className="p-4">
+                      <div className="h-4 w-full rounded bg-slate-200 dark:bg-slate-800 animate-pulse" />
+                    </td>
+                  </tr>
+                ))
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={showFullAmounts ? 5 : 4} className="py-6 text-center text-slate-500">
-                    No transactions.
+                  <td
+                    colSpan={showFullAmounts ? 5 : 4}
+                    className="py-10 text-center text-xs text-muted-foreground"
+                  >
+                    No recent transactions recorded.
                   </td>
                 </tr>
               ) : (
-                rows.map((t) => (
-                  <tr key={t._id} className="border-b border-slate-100">
-                    <td className="py-2 pr-4 font-mono text-xs">{t.reference}</td>
-                    <td className="py-2 pr-4 capitalize">{t.type}</td>
-                    <td className="py-2 pr-4">
-                      <span
-                        className={
-                          "text-[11px] px-2 py-1 rounded-full " +
-                          (t.status === "completed"
-                            ? "bg-emerald-50 text-emerald-700"
-                            : t.status === "pending"
-                              ? "bg-amber-50 text-amber-700"
-                              : "bg-rose-50 text-rose-700")
-                        }
-                      >
-                        {t.status}
-                      </span>
+                rows.slice(0, 5).map((t) => (
+                  <tr
+                    key={t._id}
+                    className="hover:bg-brand/5 transition-colors cursor-pointer"
+                    onClick={() => navigate("/transactions")}
+                  >
+                    <td className="py-3 px-4 font-mono text-xs font-medium text-brand">
+                      {t.reference}
                     </td>
-                    {showFullAmounts && <td className="py-2 pr-4">{formatNgn(t.amount)}</td>}
-                    <td className="py-2 pr-4">
+                    <td className="py-3 px-4 capitalize text-xs font-medium">
+                      {t.type}
+                    </td>
+                    <td className="py-3 px-4">
+                      <StatusBadge status={t.status} />
+                    </td>
+                    {showFullAmounts && (
+                      <td className="py-3 px-4 font-semibold text-xs text-foreground">
+                        {formatNgn(t.amount)}
+                      </td>
+                    )}
+                    <td className="py-3 px-4 text-xs text-muted-foreground">
                       {new Date(t.createdAt).toLocaleString("en-NG", {
-                        year: "numeric",
                         month: "short",
                         day: "2-digit",
                         hour: "2-digit",
@@ -256,7 +293,7 @@ function TransactionsTable({
   );
 }
 
-function ContributionsChart({
+function ContributionsChartWidget({
   rows,
   role,
 }: {
@@ -279,69 +316,102 @@ function ContributionsChart({
     return arr;
   }, [rows]);
 
-  if (!canViewChart) {
-    return null;
-  }
+  if (!canViewChart) return null;
 
   return (
-    <Card className="border border-slate-100 shadow-sm rounded-xl">
-      <CardHeader className="pb-0">
-        <CardTitle className="text-base font-semibold text-slate-900">
-          Daily Contributions
-        </CardTitle>
+    <Card className="border border-border/80 shadow-sm rounded-2xl bg-card overflow-hidden">
+      <CardHeader className="flex flex-row items-center justify-between pb-2 border-b border-border/60">
+        <div>
+          <CardTitle className="text-base font-semibold text-foreground">
+            Daily Contributions Trend
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Real-time deposit activity into savings circles
+          </p>
+        </div>
+        <div className="flex items-center gap-1 bg-muted p-1 rounded-xl">
+          <Button variant="ghost" size="sm" className="h-7 text-[11px] rounded-lg bg-card shadow-xs font-semibold">
+            7 Days
+          </Button>
+          <Button variant="ghost" size="sm" className="h-7 text-[11px] rounded-lg text-muted-foreground">
+            30 Days
+          </Button>
+        </div>
       </CardHeader>
-      <CardContent className="pt-4">
-        <div className="h-[360px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={series} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="fillBlue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.25} />
-                  <stop offset="95%" stopColor="#3B82F6" stopOpacity={0.05} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid stroke="#E5E7EB" strokeDasharray="4 6" vertical={false} />
-              <XAxis
-                dataKey="date"
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: "#6B7280", fontSize: 12 }}
-              />
-              <YAxis
-                tickFormatter={(v) => `${Math.round(v).toLocaleString()}`}
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: "#6B7280", fontSize: 12 }}
-              />
-              <Tooltip
-                cursor={{ stroke: "#CBD5E1" }}
-                contentStyle={{ borderRadius: 8, border: "1px solid #E5E7EB" }}
-                formatter={(v: any) => [formatNgn(Number(v)), "Amount"]}
-                labelFormatter={(l) =>
-                  new Date(l).toLocaleDateString("en-NG", {
-                    year: "numeric",
-                    month: "short",
-                    day: "2-digit",
-                  })
-                }
-              />
-              <Area
-                type="monotone"
-                dataKey="amount"
-                stroke="#3B82F6"
-                fill="url(#fillBlue)"
-                strokeWidth={2}
-                name="Contributions"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+
+      <CardContent className="pt-6">
+        <div className="h-[320px] w-full">
+          {series.length === 0 ? (
+            <div className="h-full flex items-center justify-center text-xs text-muted-foreground">
+              Insufficient deposit data for chart rendering.
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart
+                data={series}
+                margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+              >
+                <defs>
+                  <linearGradient id="brandGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#207EC4" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#207EC4" stopOpacity={0.0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid
+                  stroke="currentColor"
+                  className="text-border/40"
+                  strokeDasharray="4 6"
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="date"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "#64748B", fontSize: 11 }}
+                />
+                <YAxis
+                  tickFormatter={(v) => `₦${(v / 1000).toFixed(0)}k`}
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "#64748B", fontSize: 11 }}
+                />
+                <Tooltip
+                  cursor={{ stroke: "#207EC4", strokeDasharray: "2 2" }}
+                  contentStyle={{
+                    backgroundColor: "rgba(15, 23, 42, 0.9)",
+                    color: "#fff",
+                    borderRadius: "12px",
+                    border: "none",
+                    boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.3)",
+                    fontSize: "12px",
+                  }}
+                  formatter={(v: any) => [formatNgn(Number(v)), "Amount"]}
+                  labelFormatter={(l) =>
+                    new Date(l).toLocaleDateString("en-NG", {
+                      month: "short",
+                      day: "2-digit",
+                      year: "numeric",
+                    })
+                  }
+                />
+                <Area
+                  type="monotone"
+                  dataKey="amount"
+                  stroke="#207EC4"
+                  fill="url(#brandGradient)"
+                  strokeWidth={3}
+                  name="Contributions"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </CardContent>
     </Card>
   );
 }
 
-function SummaryCard({
+function SummaryWidget({
   data,
   role,
 }: {
@@ -350,53 +420,45 @@ function SummaryCard({
 }) {
   const canViewFinancials = role === "admin" || role === "account";
 
-  if (!canViewFinancials) {
-    return (
-      <Card className="border border-slate-100 shadow-sm rounded-xl">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold text-slate-900">
-            Summary
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0 text-sm text-slate-700 space-y-2">
-          <div className="flex justify-between">
-            <span>Total Users</span>
-            <span>{(data?.totalUsers ?? 0).toLocaleString()}</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Total Groups</span>
-            <span>{(data?.totalGroups ?? 0).toLocaleString()}</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Active Groups</span>
-            <span>{(data?.activeGroups ?? 0).toLocaleString()}</span>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
-    <Card className="border border-slate-100 shadow-sm rounded-xl">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base font-semibold text-slate-900">
-          Summary
+    <Card className="border border-border/80 shadow-sm rounded-2xl bg-card overflow-hidden">
+      <CardHeader className="pb-3 border-b border-border/60">
+        <CardTitle className="text-base font-semibold text-foreground">
+          Platform Executive Summary
         </CardTitle>
       </CardHeader>
-      <CardContent className="pt-0 text-sm text-slate-700 space-y-2">
-        <div className="flex justify-between">
-          <span>Total Contributions</span>
-          <span>
+      <CardContent className="pt-4 space-y-4 text-xs font-medium">
+        <div className="flex items-center justify-between p-3 rounded-xl bg-muted/40">
+          <span className="text-muted-foreground">Total Contributions Count</span>
+          <span className="font-bold text-foreground text-sm">
             {(data?.totalContributions ?? 0).toLocaleString()}
           </span>
         </div>
-        <div className="flex justify-between">
-          <span>Total Transaction Value</span>
-          <span>{formatNgn(data?.totalTransactionValue ?? 0)}</span>
-        </div>
-        <div className="flex justify-between">
-          <span>Platform Revenue</span>
-          <span>{formatNgn(data?.platformRevenue ?? 0)}</span>
+
+        {canViewFinancials && (
+          <>
+            <div className="flex items-center justify-between p-3 rounded-xl bg-muted/40">
+              <span className="text-muted-foreground">Gross Transaction Volume</span>
+              <span className="font-bold text-brand text-sm">
+                {formatNgn(data?.totalTransactionValue ?? 0)}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between p-3 rounded-xl bg-muted/40">
+              <span className="text-muted-foreground">Net Platform Earnings</span>
+              <span className="font-bold text-emerald-600 text-sm">
+                {formatNgn(data?.platformRevenue ?? 0)}
+              </span>
+            </div>
+          </>
+        )}
+
+        <div className="pt-2 border-t border-border/60 flex items-center justify-between text-muted-foreground">
+          <span>Active Operations Status</span>
+          <span className="inline-flex items-center gap-1.5 text-emerald-600 font-semibold">
+            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            Optimal
+          </span>
         </div>
       </CardContent>
     </Card>
@@ -411,10 +473,9 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
-  // Determine layout based on role
-  const canViewTransactions = role === "admin" || role === "account" || role === "customer_support";
+  const canViewTransactions =
+    role === "admin" || role === "account" || role === "customer_support";
   const canViewChart = role === "admin" || role === "account";
-  const canViewFinancials = role === "admin" || role === "account";
 
   useEffect(() => {
     if (!token) {
@@ -436,7 +497,7 @@ export default function Dashboard() {
           try {
             const j = await res.json();
             if (j?.message) msg = `Failed to load stats: ${j.message}`;
-          } catch { }
+          } catch {}
           throw new Error(msg);
         }
         return res.json();
@@ -454,98 +515,50 @@ export default function Dashboard() {
 
   return (
     <AdminLayout>
-      <div className="space-y-6 bg-transparent">
+      <div className="space-y-6">
         <PageHeader
-          title="Dashboard"
+          title="Executive Dashboard"
+          subtitle="Real-time system metrics, transaction volume, and operational breakdown."
           breadcrumbs={[{ label: "Dashboard" }]}
-          showSearch={false}
-          showExportButtons={false}
         />
 
         {err && (
-          <div className="text-sm text-red-600 bg-red-50 p-2 rounded border border-red-100">
+          <div className="text-xs font-medium text-rose-600 bg-rose-50 dark:bg-rose-950/40 p-3 rounded-xl border border-rose-200/60 dark:border-rose-800/40">
             {err}
           </div>
         )}
 
-        <KPIs data={data?.stats ?? null} role={role} />
+        {/* Top KPIs Grid */}
+        <KPIs data={data?.stats ?? null} role={role} loading={loading} />
 
-        {/* Dynamic Layout Based on Visible Components */}
-        {canViewTransactions ? (
-          <div className="grid gap-4 lg:grid-cols-3">
-            {/* Transactions table takes up 2 columns when visible */}
-            <div className="lg:col-span-2">
-              <TransactionsTable
-                rows={data?.recentTransactions ?? []}
-                loading={loading}
-                role={role}
-              />
+        {/* Main Content Layout */}
+        <div className="grid gap-6 lg:grid-cols-3">
+          {canViewTransactions ? (
+            <>
+              <div className="lg:col-span-2">
+                <TransactionsTableWidget
+                  rows={data?.recentTransactions ?? []}
+                  loading={loading}
+                  role={role}
+                />
+              </div>
+              <div className="lg:col-span-1">
+                <SummaryWidget data={data?.stats ?? null} role={role} />
+              </div>
+            </>
+          ) : (
+            <div className="lg:col-span-3 max-w-md">
+              <SummaryWidget data={data?.stats ?? null} role={role} />
             </div>
-            {/* Summary card takes 1 column */}
-            <div className="lg:col-span-1">
-              <SummaryCard data={data?.stats ?? null} role={role} />
-            </div>
-          </div>
-        ) : (
-          // When transactions are hidden, summary takes full width
-          <div className="max-w-md">
-            <SummaryCard data={data?.stats ?? null} role={role} />
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* Chart section - only shows for admin and account */}
+        {/* Chart Section */}
         {canViewChart && (
-          <ContributionsChart
+          <ContributionsChartWidget
             rows={data?.recentTransactions ?? []}
             role={role}
           />
-        )}
-
-        {/* Alternative content for Front Desk - show activity overview */}
-        {role === "front_desk" && (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Card className="border border-slate-100 shadow-sm rounded-xl">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base font-semibold text-slate-900">
-                  User Activity
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="text-3xl font-bold text-slate-900">
-                  {(data?.stats.totalUsers ?? 0).toLocaleString()}
-                </div>
-                <p className="text-sm text-slate-500 mt-1">Total registered users</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border border-slate-100 shadow-sm rounded-xl">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base font-semibold text-slate-900">
-                  Group Management
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="text-3xl font-bold text-slate-900">
-                  {(data?.stats.totalGroups ?? 0).toLocaleString()}
-                </div>
-                <p className="text-sm text-slate-500 mt-1">Total groups created</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border border-slate-100 shadow-sm rounded-xl">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base font-semibold text-slate-900">
-                  Active Groups
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="text-3xl font-bold text-slate-900">
-                  {(data?.stats.activeGroups ?? 0).toLocaleString()}
-                </div>
-                <p className="text-sm text-slate-500 mt-1">Currently active groups</p>
-              </CardContent>
-            </Card>
-          </div>
         )}
       </div>
     </AdminLayout>

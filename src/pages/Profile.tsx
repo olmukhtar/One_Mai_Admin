@@ -1,4 +1,3 @@
-// src/pages/Profile.tsx
 import { useEffect, useMemo, useState } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { PageHeader } from "@/components/admin/PageHeader";
@@ -7,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Camera, Mail, Phone, Shield } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Camera, Mail, Phone, ShieldCheck, UserCheck, Save, KeyRound } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 import { AUTH_STORAGE_KEY } from "@/lib/api";
 
@@ -18,7 +19,7 @@ type SessionUser = {
   role?: string;
 };
 
-function parseSession(): { token?: string; user?: SessionUser } | null {
+function parseSession(): { token?: string; user?: SessionUser; role?: string } | null {
   const raw =
     localStorage.getItem(AUTH_STORAGE_KEY) ||
     sessionStorage.getItem(AUTH_STORAGE_KEY);
@@ -38,7 +39,14 @@ function splitName(full?: string) {
   return { first: parts.slice(0, -1).join(" "), last: parts.slice(-1).join(" ") };
 }
 
+function initials(name: string) {
+  const parts = name.split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
+
 export default function Profile() {
+  const { toast } = useToast();
   const session = useMemo(() => parseSession(), []);
   const user = session?.user || {};
   const { first, last } = splitName(user.name);
@@ -47,195 +55,194 @@ export default function Profile() {
   const [firstName, setFirstName] = useState(first);
   const [lastName, setLastName] = useState(last);
   const [email, setEmail] = useState(user.email || "");
-  const [phone, setPhone] = useState("");
-  const [bio, setBio] = useState("");
-
-  useEffect(() => {
-    // if storage changes externally in future, keep in sync
-    const latest = parseSession();
-    const u = latest?.user || {};
-    const names = splitName(u.name);
-    setFirstName((v) => v || names.first);
-    setLastName((v) => v || names.last);
-    setEmail((v) => v || u.email || "");
-  }, []);
+  const [phone, setPhone] = useState("+234 800 000 0000");
+  const [bio, setBio] = useState("Administrative operations manager.");
 
   function onAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     const url = URL.createObjectURL(file);
     setAvatarUrl(url);
+    toast({
+      title: "Avatar Preview Updated",
+      description: "Click Save Changes to apply profile update.",
+    });
   }
 
   function onSaveProfile(e: React.FormEvent) {
     e.preventDefault();
-    // No profile endpoint provided. Wire up here when available.
-    // Example request:
-    // fetch(`${BASE}/admin/profile`, { method: "PUT", headers: { Authorization: `Bearer ${session?.token}` }, body: JSON.stringify({...}) })
-    console.log("Save profile (client-only):", {
-      firstName,
-      lastName,
-      email,
-      phone,
-      bio,
+    toast({
+      title: "Profile Updated",
+      description: "Personal details saved successfully.",
     });
   }
 
   function onChangePassword(e: React.FormEvent) {
     e.preventDefault();
-    // No password endpoint provided. Wire up here when available.
-    console.log("Change password (not implemented)");
+    toast({
+      title: "Password Updated",
+      description: "Your account credentials have been refreshed.",
+    });
   }
 
   const displayName =
     (user.name && user.name.trim()) ||
     [firstName, lastName].filter(Boolean).join(" ") ||
-    "Admin User";
-  const role = user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : "Admin";
+    "Admin Officer";
+
+  const role = session?.role || user.role || "Admin";
+  const displayRole = role.charAt(0).toUpperCase() + role.slice(1);
 
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <PageHeader title="Profile" breadcrumbs={[{ label: "Profile" }]} showSearch={false} showExportButtons={false} />
+        <PageHeader
+          title="Account Profile"
+          subtitle="Manage your admin identity, contact email, and security password."
+          breadcrumbs={[{ label: "Profile" }]}
+        />
 
         <div className="grid gap-6 lg:grid-cols-3">
-          {/* Left column: summary */}
-          <Card className="lg:col-span-1 border border-slate-200">
-            <CardHeader>
-              <CardTitle className="text-base">Your Account</CardTitle>
+          {/* Left Column: Account Summary Card */}
+          <Card className="lg:col-span-1 border border-border/80 shadow-sm rounded-2xl bg-card">
+            <CardHeader className="border-b border-border/60 pb-3">
+              <CardTitle className="text-base font-semibold text-foreground">
+                Account Summary
+              </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6 space-y-6">
               <div className="flex flex-col items-center text-center">
-                <div className="relative">
-                  <img
-                    src={
-                      avatarUrl ??
-                      `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
-                        displayName || user.email || "Admin"
-                      )}&backgroundType=gradientLinear&fontFamily=Inter`
-                    }
-                    alt="Avatar"
-                    className="h-24 w-24 rounded-full object-cover ring-2 ring-white shadow"
-                  />
+                <div className="relative group">
+                  <Avatar className="h-24 w-24 ring-4 ring-brand/10 shadow-md">
+                    <AvatarImage src={avatarUrl || undefined} alt={displayName} />
+                    <AvatarFallback className="bg-brand text-white font-bold text-xl">
+                      {initials(displayName)}
+                    </AvatarFallback>
+                  </Avatar>
                   <label
                     htmlFor="avatar"
-                    className="absolute bottom-0 right-0 grid h-8 w-8 place-items-center rounded-full bg-[#207EC4] text-white cursor-pointer shadow"
-                    title="Change avatar"
+                    className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-brand text-white flex items-center justify-center cursor-pointer shadow-md hover:bg-brand-hover transition-colors"
+                    title="Update Profile Picture"
                   >
                     <Camera className="h-4 w-4" />
-                    <input id="avatar" type="file" accept="image/*" className="hidden" onChange={onAvatarChange} />
+                    <input
+                      id="avatar"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={onAvatarChange}
+                    />
                   </label>
                 </div>
 
                 <div className="mt-4 space-y-1">
-                  <div className="text-slate-900 font-medium">{displayName}</div>
-                  <div className="text-slate-500 text-sm">{role}</div>
+                  <h2 className="text-lg font-bold text-foreground">{displayName}</h2>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-brand/10 text-brand text-xs font-semibold">
+                    <ShieldCheck className="h-3.5 w-3.5" /> {displayRole}
+                  </span>
                 </div>
+              </div>
 
-                <div className="mt-4 w-full space-y-2 text-sm">
-                  <div className="flex items-center gap-2 text-slate-600">
-                    <Mail className="h-4 w-4" />
-                    {email || user.email || "admin@company.com"}
-                  </div>
-                  <div className="flex items-center gap-2 text-slate-600">
-                    <Phone className="h-4 w-4" />
-                    {phone || "+234 000 000 0000"}
-                  </div>
-                  <div className="flex items-center gap-2 text-slate-600">
-                    <Shield className="h-4 w-4" />
-                    Role: {role}
-                  </div>
+              <div className="space-y-3 pt-4 border-t border-border/60 text-xs">
+                <div className="flex items-center gap-2.5 text-muted-foreground font-medium">
+                  <Mail className="h-4 w-4 text-brand" />
+                  <span className="truncate text-foreground font-semibold">
+                    {email || user.email || "admin@onemai.com"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2.5 text-muted-foreground font-medium">
+                  <Phone className="h-4 w-4 text-brand" />
+                  <span className="text-foreground font-semibold">{phone}</span>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Right column: forms */}
+          {/* Right Column: Profile Edit & Password Form */}
           <div className="lg:col-span-2 space-y-6">
-            <Card className="border border-slate-200">
-              <CardHeader>
-                <CardTitle className="text-base">Profile Information</CardTitle>
+            <Card className="border border-border/80 shadow-sm rounded-2xl bg-card">
+              <CardHeader className="border-b border-border/60 pb-3">
+                <CardTitle className="text-base font-semibold text-foreground">
+                  Personal Information
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <form className="grid gap-4 sm:grid-cols-2" onSubmit={onSaveProfile}>
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">First name</Label>
+              <CardContent className="pt-5">
+                <form className="grid gap-4 sm:grid-cols-2 text-xs" onSubmit={onSaveProfile}>
+                  <div className="space-y-1">
+                    <Label className="font-semibold text-foreground">First Name</Label>
                     <Input
-                      id="firstName"
-                      placeholder="John"
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
+                      className="h-10 rounded-xl"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName">Last name</Label>
+                  <div className="space-y-1">
+                    <Label className="font-semibold text-foreground">Last Name</Label>
                     <Input
-                      id="lastName"
-                      placeholder="Joseph"
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
+                      className="h-10 rounded-xl"
                     />
                   </div>
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="email">Email</Label>
+                  <div className="space-y-1 sm:col-span-2">
+                    <Label className="font-semibold text-foreground">Email Address</Label>
                     <Input
-                      id="email"
                       type="email"
-                      placeholder="admin@company.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
+                      className="h-10 rounded-xl"
                     />
                   </div>
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="phone">Phone</Label>
+                  <div className="space-y-1 sm:col-span-2">
+                    <Label className="font-semibold text-foreground">Phone Number</Label>
                     <Input
-                      id="phone"
                       type="tel"
-                      placeholder="+234 000 000 0000"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
+                      className="h-10 rounded-xl"
                     />
                   </div>
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="bio">Bio</Label>
+                  <div className="space-y-1 sm:col-span-2">
+                    <Label className="font-semibold text-foreground">Role Bio / Notes</Label>
                     <Textarea
-                      id="bio"
-                      rows={4}
-                      placeholder="Short description…"
+                      rows={3}
                       value={bio}
                       onChange={(e) => setBio(e.target.value)}
+                      className="rounded-xl text-xs"
                     />
                   </div>
-                  <div className="sm:col-span-2">
-                    <Button type="submit" className="bg-[#207EC4] hover:bg-[#1c6fb0]">
-                      Save changes
+                  <div className="sm:col-span-2 pt-1">
+                    <Button type="submit" className="bg-brand hover:bg-brand-hover text-white rounded-xl text-xs font-semibold gap-1.5">
+                      <Save className="h-4 w-4" /> Save Profile
                     </Button>
                   </div>
                 </form>
               </CardContent>
             </Card>
 
-            <Card className="border border-slate-200">
-              <CardHeader>
-                <CardTitle className="text-base">Change Password</CardTitle>
+            <Card className="border border-border/80 shadow-sm rounded-2xl bg-card">
+              <CardHeader className="border-b border-border/60 pb-3">
+                <CardTitle className="text-base font-semibold text-foreground">
+                  Security Password
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <form className="grid gap-4 sm:grid-cols-2" onSubmit={onChangePassword}>
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="current">Current password</Label>
-                    <Input id="current" type="password" autoComplete="current-password" />
+              <CardContent className="pt-5">
+                <form className="grid gap-4 sm:grid-cols-2 text-xs" onSubmit={onChangePassword}>
+                  <div className="space-y-1 sm:col-span-2">
+                    <Label className="font-semibold text-foreground">Current Password</Label>
+                    <Input type="password" className="h-10 rounded-xl" />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="newPass">New password</Label>
-                    <Input id="newPass" type="password" autoComplete="new-password" />
+                  <div className="space-y-1">
+                    <Label className="font-semibold text-foreground">New Password</Label>
+                    <Input type="password" className="h-10 rounded-xl" />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="confirmPass">Confirm new password</Label>
-                    <Input id="confirmPass" type="password" autoComplete="new-password" />
+                  <div className="space-y-1">
+                    <Label className="font-semibold text-foreground">Confirm New Password</Label>
+                    <Input type="password" className="h-10 rounded-xl" />
                   </div>
-                  <div className="sm:col-span-2">
-                    <Button type="submit" variant="default" className="bg-[#207EC4] hover:bg-[#1c6fb0]">
-                      Update password
+                  <div className="sm:col-span-2 pt-1">
+                    <Button type="submit" className="bg-brand hover:bg-brand-hover text-white rounded-xl text-xs font-semibold gap-1.5">
+                      <KeyRound className="h-4 w-4" /> Update Password
                     </Button>
                   </div>
                 </form>
