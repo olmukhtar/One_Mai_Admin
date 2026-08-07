@@ -164,14 +164,30 @@ function normalizeAffiliate(raw: any): AffiliateRow {
 }
 
 function normalizeReferral(raw: any): ReferralRow {
-  const person = raw?.user || raw?.referredUser || raw?.referralUser || raw;
+  const person = raw?.referee || raw?.referredUser || raw?.referralUser || raw?.user || raw;
+  const commissions = Array.isArray(raw?.commissions) ? raw.commissions : [];
+  const rewardTotal = commissions.reduce((sum: number, item: any) => {
+    const value =
+      item?.amount ??
+      item?.commission ??
+      item?.reward ??
+      item?.value ??
+      0;
+    return sum + (typeof value === "number" ? value : Number(value) || 0);
+  }, 0);
+
   return {
     _id: raw?._id || person?._id || person?.id || crypto.randomUUID(),
     name: buildName(person),
     email: person?.email || raw?.email || "—",
     status: person?.accountStatus || raw?.status || raw?.state || "unknown",
     joinedAt: person?.createdAt || raw?.createdAt || raw?.joinedAt,
-    reward: raw?.reward ?? raw?.bonus ?? raw?.commission ?? raw?.amount,
+    reward:
+      raw?.reward ??
+      raw?.bonus ??
+      raw?.commission ??
+      raw?.amount ??
+      (rewardTotal > 0 ? rewardTotal : 0),
   };
 }
 
