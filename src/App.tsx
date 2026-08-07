@@ -17,6 +17,7 @@ import Users from "./pages/Users";
 import UserDetails from "./pages/UserDetails";
 import AffiliateApplications from "./pages/AffiliateApplications";
 import AffiliateApplicationDetail from "./pages/AffiliateApplicationDetail";
+import Affiliates from "./pages/Affiliates";
 import Support from "./pages/Support";
 import Transactions from "./pages/Transactions";
 import CircleManagement from "./pages/CircleManagement";
@@ -175,6 +176,14 @@ const App = () => (
               element={
                 <RequireAuth>
                   <AffiliateApplications />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/affiliates"
+              element={
+                <RequireAuth>
+                  <Affiliates />
                 </RequireAuth>
               }
             />

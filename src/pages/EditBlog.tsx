@@ -338,7 +338,7 @@ export default function EditBlog() {
                                             </div>
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value=".com">app.joinonemai.com (Global)</SelectItem>
+                                            <SelectItem value=".com">app.joinonemai.ng (Global)</SelectItem>
                                             <SelectItem value=".ng">app.joinonemai.ng (Nigeria)</SelectItem>
                                             <SelectItem value=".eu">app.joinonemai.eu (Europe)</SelectItem>
                                         </SelectContent>

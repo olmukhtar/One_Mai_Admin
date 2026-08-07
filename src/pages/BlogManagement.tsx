@@ -126,7 +126,7 @@ export default function BlogManagement() {
 
   // Share post
   const handleSharePost = (post: BlogPost) => {
-    const shareUrl = `https://app.joinonemai.com/blog/${post._id}`;
+    const shareUrl = `https://app.joinonemai.ng/blog/${post._id}`;
     navigator.clipboard.writeText(shareUrl);
     toast({
       title: "Link Copied",
