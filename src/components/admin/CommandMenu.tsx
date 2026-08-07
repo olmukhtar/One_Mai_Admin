@@ -20,6 +20,7 @@ import {
   Settings,
   User,
   X,
+  Bell,
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
@@ -32,6 +33,7 @@ interface NavOption {
 
 const options: NavOption[] = [
   { title: "Dashboard", url: "/dashboard", category: "Navigation", icon: LayoutDashboard },
+  { title: "Notifications Center", url: "/notifications", category: "Navigation", icon: Bell },
   { title: "Users", url: "/users", category: "Navigation", icon: Users },
   { title: "Groups", url: "/groups", category: "Navigation", icon: Users2 },
   { title: "Transactions", url: "/transactions", category: "Navigation", icon: CreditCard },
@@ -86,7 +88,7 @@ export function CommandMenu({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl p-0 overflow-hidden rounded-2xl border border-border shadow-2xl bg-card">
+      <DialogContent hideCloseButton className="max-w-xl p-0 overflow-hidden rounded-2xl border border-border shadow-2xl bg-card">
         {/* Search Header */}
         <div className="flex items-center px-4 border-b border-border">
           <Search className="h-4 w-4 text-muted-foreground mr-3 flex-shrink-0" />
@@ -101,12 +103,13 @@ export function CommandMenu({
           {query && (
             <button
               onClick={() => setQuery("")}
-              className="p-1 rounded hover:bg-muted text-muted-foreground"
+              className="p-1 rounded hover:bg-muted text-muted-foreground mr-2 flex-shrink-0"
+              title="Clear search"
             >
               <X className="h-4 w-4" />
             </button>
           )}
-          <kbd className="hidden sm:inline-block ml-2 px-2 py-0.5 text-[10px] font-mono text-muted-foreground bg-muted rounded border border-border">
+          <kbd className="hidden sm:inline-block px-2 py-0.5 text-[10px] font-mono text-muted-foreground bg-muted rounded border border-border flex-shrink-0">
             ESC
           </kbd>
         </div>

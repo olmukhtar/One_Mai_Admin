@@ -12,6 +12,8 @@ import {
   LogOut,
   ShieldCheck,
   Menu,
+  ArrowUpRight,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,6 +31,7 @@ import {
 } from "@/components/ui/popover";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link, useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -46,6 +49,7 @@ function initials(nameOrEmail: string) {
 
 export function AdminLayout({ children }: AdminLayoutProps) {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [commandOpen, setCommandOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
@@ -89,28 +93,39 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     navigate("/", { replace: true });
   }
 
-  const notifications = [
+  const [notifications, setNotifications] = useState([
     {
       id: 1,
       title: "New Affiliate Application",
       time: "10 mins ago",
       read: false,
+      link: "/affiliate-applications",
     },
     {
       id: 2,
       title: "Monify Batch Payout Completed",
       time: "1 hour ago",
       read: false,
+      link: "/monify",
     },
     {
       id: 3,
       title: "New Circle Created: Lagos Savers",
       time: "3 hours ago",
       read: true,
+      link: "/groups",
     },
-  ];
+  ]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
+
+  const handleMarkAllRead = () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    toast({
+      title: "Notifications Read",
+      description: "Marked all items as read.",
+    });
+  };
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background text-foreground">
@@ -211,18 +226,35 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                   {notifications.map((n) => (
                     <div
                       key={n.id}
-                      className={`p-3 text-xs transition-colors hover:bg-muted/50 ${
+                      onClick={() => navigate(n.link)}
+                      className={`p-3 text-xs transition-colors hover:bg-muted/50 cursor-pointer ${
                         !n.read ? "bg-brand/5 font-medium" : "text-muted-foreground"
                       }`}
                     >
-                      <p className="text-foreground font-medium">{n.title}</p>
+                      <p className="text-foreground font-medium flex items-center justify-between">
+                        {n.title}
+                        {!n.read && <span className="h-1.5 w-1.5 rounded-full bg-brand" />}
+                      </p>
                       <p className="text-[10px] text-muted-foreground mt-0.5">{n.time}</p>
                     </div>
                   ))}
                 </div>
-                <div className="p-2 border-t border-border text-center">
-                  <Button variant="ghost" size="sm" className="w-full text-xs text-brand h-7">
-                    Mark all as read
+                <div className="p-2 border-t border-border flex items-center justify-between gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleMarkAllRead}
+                    className="text-xs text-muted-foreground hover:text-foreground h-7 text-[11px]"
+                  >
+                    Mark all read
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate("/notifications")}
+                    className="text-xs text-brand font-semibold hover:text-brand hover:bg-brand/10 h-7 text-[11px]"
+                  >
+                    View All <ArrowUpRight className="h-3 w-3 ml-0.5" />
                   </Button>
                 </div>
               </PopoverContent>

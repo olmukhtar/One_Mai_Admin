@@ -7,17 +7,24 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { AlertCircle, Loader2, MessageSquarePlus, RefreshCw, UsersRound, Award } from "lucide-react";
+import {
+  AlertCircle,
+  Loader2,
+  MessageSquare,
+  RefreshCw,
+  UsersRound,
+  MessageSquarePlus,
+  Send,
+  UserCheck,
+} from "lucide-react";
 
 import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
 import { API_BASE_URL } from "@/lib/constants";
@@ -219,19 +226,22 @@ export default function Affiliates() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  // Unified Inspection Modal State
+  const [inspectOpen, setInspectOpen] = useState(false);
   const [selectedAffiliate, setSelectedAffiliate] = useState<AffiliateRow | null>(null);
+  const [activeTab, setActiveTab] = useState<"referrals" | "remarks">("referrals");
 
-  const [referralsOpen, setReferralsOpen] = useState(false);
+  // Referrals Data inside Modal
   const [referrals, setReferrals] = useState<ReferralRow[]>([]);
   const [referralsLoading, setReferralsLoading] = useState(false);
   const [referralsError, setReferralsError] = useState<string | null>(null);
 
-  const [remarksOpen, setRemarksOpen] = useState(false);
+  // Remarks Data inside Modal
   const [remarks, setRemarks] = useState<RemarkRow[]>([]);
   const [remarksLoading, setRemarksLoading] = useState(false);
   const [remarksError, setRemarksError] = useState<string | null>(null);
 
-  const [addRemarkOpen, setAddRemarkOpen] = useState(false);
+  // New Remark Form State
   const [remarkText, setRemarkText] = useState("");
   const [submittingRemark, setSubmittingRemark] = useState(false);
 
@@ -272,49 +282,49 @@ export default function Affiliates() {
     }
   };
 
-  const fetchReferrals = async (affiliate: AffiliateRow) => {
+  const openInspectModal = async (affiliate: AffiliateRow, initialTab: "referrals" | "remarks" = "referrals") => {
     setSelectedAffiliate(affiliate);
-    setReferralsOpen(true);
+    setActiveTab(initialTab);
+    setInspectOpen(true);
+
+    // Fetch Referrals
     setReferrals([]);
     setReferralsError(null);
     setReferralsLoading(true);
 
-    try {
-      const url = new URL(AFFILIATE_REFERRALS_URL(affiliate.userId));
-      url.searchParams.set("limit", String(PAGE_SIZE));
-      url.searchParams.set("page", "1");
-
-      const res = await apiFetch(url.toString());
-      const body = await res.json().catch(() => null);
-
-      if (!res.ok) {
-        throw new Error(body?.message || `Failed to load referrals: ${res.status}`);
-      }
-
-      setReferrals(unwrapArray(body, ["referrals", "users", "data"]).map(normalizeReferral));
-    } catch (error: any) {
-      setReferralsError(error?.message || "Failed to load affiliate referrals.");
-    } finally {
-      setReferralsLoading(false);
-    }
-  };
-
-  const fetchRemarks = async (affiliate: AffiliateRow) => {
-    setSelectedAffiliate(affiliate);
-    setRemarksOpen(true);
+    // Fetch Remarks
     setRemarks([]);
     setRemarksError(null);
     setRemarksLoading(true);
 
     try {
-      const res = await apiFetch(AFFILIATE_REMARKS_URL(affiliate.userId));
-      const body = await res.json().catch(() => null);
+      const refUrl = new URL(AFFILIATE_REFERRALS_URL(affiliate.userId));
+      refUrl.searchParams.set("limit", String(PAGE_SIZE));
+      refUrl.searchParams.set("page", "1");
 
-      if (!res.ok) {
-        throw new Error(body?.message || `Failed to load remarks: ${res.status}`);
+      const refRes = await apiFetch(refUrl.toString());
+      const refBody = await refRes.json().catch(() => null);
+
+      if (refRes.ok) {
+        setReferrals(unwrapArray(refBody, ["referrals", "users", "data"]).map(normalizeReferral));
+      } else {
+        setReferralsError(refBody?.message || "Failed to load affiliate referrals.");
       }
+    } catch (error: any) {
+      setReferralsError(error?.message || "Failed to load affiliate referrals.");
+    } finally {
+      setReferralsLoading(false);
+    }
 
-      setRemarks(unwrapArray(body, ["remarks", "data"]).map(normalizeRemark));
+    try {
+      const remRes = await apiFetch(AFFILIATE_REMARKS_URL(affiliate.userId));
+      const remBody = await remRes.json().catch(() => null);
+
+      if (remRes.ok) {
+        setRemarks(unwrapArray(remBody, ["remarks", "data"]).map(normalizeRemark));
+      } else {
+        setRemarksError(remBody?.message || "Failed to load remarks.");
+      }
     } catch (error: any) {
       setRemarksError(error?.message || "Failed to load remarks.");
     } finally {
@@ -335,7 +345,7 @@ export default function Affiliates() {
     if (!remarkText.trim()) {
       toast({
         title: "Remark required",
-        description: "Enter a remark before submitting.",
+        description: "Enter a remark note before submitting.",
         variant: "destructive",
       });
       return;
@@ -363,13 +373,18 @@ export default function Affiliates() {
       }
 
       toast({
-        title: "Remark added",
-        description: body?.message || `Remark saved for ${selectedAffiliate.name}.`,
+        title: "Remark saved",
+        description: body?.message || `Internal note added for ${selectedAffiliate.name}.`,
       });
 
-      setAddRemarkOpen(false);
       setRemarkText("");
-      await fetchRemarks(selectedAffiliate);
+
+      // Refetch remarks
+      const remRes = await apiFetch(AFFILIATE_REMARKS_URL(selectedAffiliate.userId));
+      const remBody = await remRes.json().catch(() => null);
+      if (remRes.ok) {
+        setRemarks(unwrapArray(remBody, ["remarks", "data"]).map(normalizeRemark));
+      }
     } catch (error: any) {
       toast({
         title: "Failed to add remark",
@@ -408,11 +423,7 @@ export default function Affiliates() {
       {
         key: "accountStatus",
         label: "Status",
-        render: (value: string, row: AffiliateRow) => (
-          <div className="space-y-1">
-            <StatusBadge status={value} />
-          </div>
-        ),
+        render: (value: string) => <StatusBadge status={value} />,
       },
       {
         key: "totalReferrals",
@@ -442,24 +453,11 @@ export default function Affiliates() {
   const actionItems = useMemo(
     () => [
       {
-        label: "Inspect Referral List",
-        onClick: (row: AffiliateRow) => fetchReferrals(row),
-      },
-      {
-        label: "View Admin Remarks",
-        onClick: (row: AffiliateRow) => fetchRemarks(row),
-      },
-      {
-        label: "Add Admin Remark",
-        onClick: (row: AffiliateRow) => {
-          setSelectedAffiliate(row);
-          setRemarkText("");
-          setAddRemarkOpen(true);
-        },
-        show: () => canManageRemarks,
+        label: "Inspect Referrals & Remarks",
+        onClick: (row: AffiliateRow) => openInspectModal(row, "referrals"),
       },
     ],
-    [canManageRemarks]
+    []
   );
 
   return (
@@ -502,112 +500,147 @@ export default function Affiliates() {
         />
       </div>
 
-      {/* Referrals Dialog */}
-      <Dialog open={referralsOpen} onOpenChange={setReferralsOpen}>
-        <DialogContent className="max-w-3xl rounded-2xl border border-border shadow-2xl bg-card p-6">
+      {/* Unified Inspection Modal: Referrals List + Internal Admin Remarks */}
+      <Dialog open={inspectOpen} onOpenChange={setInspectOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl border border-border shadow-2xl bg-card p-6">
           <DialogHeader className="border-b border-border/60 pb-3">
-            <DialogTitle className="text-base font-semibold">
-              Referrals for {selectedAffiliate?.name}
-            </DialogTitle>
+            <div className="flex items-center gap-3">
+              <Avatar className="h-10 w-10 ring-2 ring-brand/10">
+                <AvatarImage src={selectedAffiliate?.image} alt={selectedAffiliate?.name} />
+                <AvatarFallback className="bg-brand text-white font-bold text-xs">
+                  {initials(selectedAffiliate?.name || "Affiliate")}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <DialogTitle className="text-base font-bold text-foreground">
+                  {selectedAffiliate?.name}
+                </DialogTitle>
+                <p className="text-xs text-muted-foreground font-mono">
+                  {selectedAffiliate?.email} · Ref Code:{" "}
+                  <span className="font-bold text-brand">{selectedAffiliate?.referralCode || "N/A"}</span>
+                </p>
+              </div>
+            </div>
           </DialogHeader>
 
-          {referralsLoading ? (
-            <div className="py-12 text-center text-xs text-muted-foreground animate-pulse">
-              Loading referral list...
-            </div>
-          ) : (
-            <DataTable
-              columns={[
-                { key: "name", label: "Referred User" },
-                { key: "email", label: "Email" },
-                {
-                  key: "status",
-                  label: "Status",
-                  render: (v: string) => <StatusBadge status={v} />,
-                },
-                {
-                  key: "reward",
-                  label: "Commission Earned",
-                  render: (v: any) => (
-                    <span className="font-bold text-brand">{formatMoney(Number(v) || 0)}</span>
-                  ),
-                },
-              ]}
-              data={referrals}
-              showActions={false}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+          {/* Unified Tabs: Referrals & Internal Remarks */}
+          <Tabs
+            value={activeTab}
+            onValueChange={(val) => setActiveTab(val as "referrals" | "remarks")}
+            className="w-full pt-2"
+          >
+            <TabsList className="grid w-full grid-cols-2 rounded-xl bg-muted p-1">
+              <TabsTrigger value="referrals" className="rounded-lg text-xs font-semibold">
+                <UsersRound className="h-3.5 w-3.5 mr-1.5" /> Referrals List ({referrals.length})
+              </TabsTrigger>
+              <TabsTrigger value="remarks" className="rounded-lg text-xs font-semibold">
+                <MessageSquare className="h-3.5 w-3.5 mr-1.5" /> Internal Admin Remarks ({remarks.length})
+              </TabsTrigger>
+            </TabsList>
 
-      {/* Remarks Dialog */}
-      <Dialog open={remarksOpen} onOpenChange={setRemarksOpen}>
-        <DialogContent className="max-w-xl rounded-2xl border border-border shadow-2xl bg-card p-6">
-          <DialogHeader className="border-b border-border/60 pb-3">
-            <DialogTitle className="text-base font-semibold">
-              Internal Admin Remarks for {selectedAffiliate?.name}
-            </DialogTitle>
-          </DialogHeader>
-
-          {remarksLoading ? (
-            <div className="py-12 text-center text-xs text-muted-foreground animate-pulse">
-              Loading internal remarks...
-            </div>
-          ) : remarks.length === 0 ? (
-            <div className="py-8 text-center text-xs text-muted-foreground">
-              No internal remarks recorded.
-            </div>
-          ) : (
-            <div className="space-y-3 pt-2">
-              {remarks.map((r) => (
-                <div key={r._id} className="p-3 rounded-xl bg-muted/40 border border-border/60 space-y-1">
-                  <div className="flex justify-between items-center text-xs font-semibold">
-                    <span className="text-brand">{r.adminName}</span>
-                    <span className="text-muted-foreground text-[10px]">{formatDate(r.createdAt)}</span>
-                  </div>
-                  <p className="text-xs text-foreground">{r.remark}</p>
+            {/* Referrals List Tab */}
+            <TabsContent value="referrals" className="pt-4 space-y-4">
+              {referralsLoading ? (
+                <div className="py-12 text-center text-xs text-muted-foreground animate-pulse">
+                  Loading referral list...
                 </div>
-              ))}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+              ) : referralsError ? (
+                <div className="p-3 text-xs text-rose-600 bg-rose-50 rounded-xl border border-rose-200">
+                  {referralsError}
+                </div>
+              ) : (
+                <DataTable
+                  columns={[
+                    { key: "name", label: "Referred User" },
+                    { key: "email", label: "Email" },
+                    {
+                      key: "status",
+                      label: "Status",
+                      render: (v: string) => <StatusBadge status={v} />,
+                    },
+                    {
+                      key: "reward",
+                      label: "Commission Earned",
+                      render: (v: any) => (
+                        <span className="font-bold text-brand">{formatMoney(Number(v) || 0)}</span>
+                      ),
+                    },
+                  ]}
+                  data={referrals}
+                  showActions={false}
+                />
+              )}
+            </TabsContent>
 
-      {/* Add Remark Dialog */}
-      <Dialog open={addRemarkOpen} onOpenChange={setAddRemarkOpen}>
-        <DialogContent className="max-w-md rounded-2xl border border-border shadow-2xl bg-card p-6">
-          <DialogHeader className="border-b border-border/60 pb-3">
-            <DialogTitle className="text-base font-semibold">Add Internal Remark</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 pt-3">
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">Affiliate Partner</Label>
-              <Input value={selectedAffiliate?.name || ""} disabled className="h-9 rounded-xl text-xs" />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">Note / Remark</Label>
-              <Textarea
-                rows={4}
-                value={remarkText}
-                onChange={(e) => setRemarkText(e.target.value)}
-                placeholder="Write an internal note..."
-                className="rounded-xl text-xs"
-              />
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="ghost" size="sm" onClick={() => setAddRemarkOpen(false)} className="rounded-xl text-xs">
-                Cancel
-              </Button>
-              <Button
-                size="sm"
-                onClick={handleAddRemark}
-                disabled={submittingRemark}
-                className="bg-brand hover:bg-brand-hover text-white rounded-xl text-xs font-semibold"
-              >
-                {submittingRemark ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Remark"}
-              </Button>
-            </div>
-          </div>
+            {/* Internal Admin Remarks Tab */}
+            <TabsContent value="remarks" className="pt-4 space-y-4">
+              {/* Remarks List */}
+              {remarksLoading ? (
+                <div className="py-12 text-center text-xs text-muted-foreground animate-pulse">
+                  Loading internal remarks...
+                </div>
+              ) : remarksError ? (
+                <div className="p-3 text-xs text-rose-600 bg-rose-50 rounded-xl border border-rose-200">
+                  {remarksError}
+                </div>
+              ) : remarks.length === 0 ? (
+                <Card className="border border-dashed border-border/80 shadow-none rounded-2xl p-6 text-center bg-card">
+                  <div className="flex flex-col items-center gap-2 text-xs text-muted-foreground">
+                    <MessageSquarePlus className="h-8 w-8 text-muted-foreground/40" />
+                    <span>No internal admin remarks saved for this affiliate partner yet.</span>
+                  </div>
+                </Card>
+              ) : (
+                <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                  {remarks.map((r) => (
+                    <div key={r._id} className="p-3 rounded-xl bg-muted/40 border border-border/60 space-y-1">
+                      <div className="flex justify-between items-center text-xs font-semibold">
+                        <span className="text-brand flex items-center gap-1.5">
+                          <UserCheck className="h-3.5 w-3.5" /> {r.adminName}
+                        </span>
+                        <span className="text-muted-foreground text-[10px]">{formatDate(r.createdAt)}</span>
+                      </div>
+                      <p className="text-xs text-foreground leading-relaxed">{r.remark}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Inline Form to Add New Remark */}
+              {canManageRemarks && (
+                <Card className="border border-border/80 shadow-sm rounded-2xl bg-card p-4">
+                  <div className="space-y-3">
+                    <Label className="text-xs font-bold text-foreground block">
+                      Add New Admin Remark Note
+                    </Label>
+                    <Textarea
+                      rows={3}
+                      value={remarkText}
+                      onChange={(e) => setRemarkText(e.target.value)}
+                      placeholder="Write an internal note about performance, compliance, or commissions..."
+                      className="rounded-xl text-xs"
+                    />
+                    <div className="flex justify-end">
+                      <Button
+                        size="sm"
+                        onClick={handleAddRemark}
+                        disabled={submittingRemark || !remarkText.trim()}
+                        className="bg-brand hover:bg-brand-hover text-white rounded-xl text-xs font-semibold gap-1.5"
+                      >
+                        {submittingRemark ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            <Send className="h-3.5 w-3.5" /> Save Remark Note
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              )}
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
     </AdminLayout>

@@ -30,6 +30,7 @@ import GroupDetails from "./pages/GroupDetails";
 import Login from "./pages/Login";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
+import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 
 import CreateAdmin from "./pages/CreateAdmin";
@@ -168,6 +169,14 @@ const App = () => (
               element={
                 <RequireAuth>
                   <Settings />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/notifications"
+              element={
+                <RequireAuth>
+                  <Notifications />
                 </RequireAuth>
               }
             />
