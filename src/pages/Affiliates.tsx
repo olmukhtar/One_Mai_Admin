@@ -59,8 +59,8 @@ type RemarkRow = {
 
 const PAGE_SIZE = 10;
 const AFFILIATES_URL = `${API_BASE_URL}/admin/affiliate/all`;
-const AFFILIATE_REFERRALS_URL = (affiliateId: string) =>
-  `${API_BASE_URL}/admin/affiliate/${affiliateId}/referrals`;
+const AFFILIATE_REFERRALS_URL = (userId: string) =>
+  `${API_BASE_URL}/admin/affiliate/${userId}/referrals`;
 const AFFILIATE_REMARKS_URL = (userId: string) =>
   `${API_BASE_URL}/admin/affiliate/remark/${userId}`;
 const ADD_AFFILIATE_REMARK_URL = `${API_BASE_URL}/admin/affiliate/remark/add`;
@@ -259,7 +259,7 @@ export default function Affiliates() {
     setReferralsLoading(true);
 
     try {
-      const url = new URL(AFFILIATE_REFERRALS_URL(affiliate.affiliateId));
+      const url = new URL(AFFILIATE_REFERRALS_URL(affiliate.userId));
       url.searchParams.set("limit", String(PAGE_SIZE));
       url.searchParams.set("page", "1");
 
