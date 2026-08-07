@@ -11,6 +11,7 @@ import {
   Settings,
   LogOut,
   ShieldCheck,
+  Menu,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,6 +47,7 @@ function initials(nameOrEmail: string) {
 export function AdminLayout({ children }: AdminLayoutProps) {
   const navigate = useNavigate();
   const [commandOpen, setCommandOpen] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // Dark Mode Theme toggle state
   const [isDark, setIsDark] = useState(() => {
@@ -87,7 +89,6 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     navigate("/", { replace: true });
   }
 
-  // Sample System Notifications
   const notifications = [
     {
       id: 1,
@@ -113,17 +114,41 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background text-foreground">
-      {/* Fixed Sidebar */}
-      <AppSidebar />
+      {/* Sidebar (Handles desktop fixed & mobile slide-over drawer) */}
+      <AppSidebar
+        isMobileOpen={mobileSidebarOpen}
+        onMobileClose={() => setMobileSidebarOpen(false)}
+      />
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Modern Header */}
-        <header className="h-16 border-b border-border/60 bg-card/80 backdrop-blur-md flex items-center justify-between px-6 flex-shrink-0 z-20">
-          {/* Quick Search Launcher (Cmd+K) */}
+        <header className="h-16 border-b border-border/60 bg-card/80 backdrop-blur-md flex items-center justify-between px-4 sm:px-6 flex-shrink-0 z-20">
+          {/* Mobile Hamburger & Logo Branding */}
+          <div className="flex items-center gap-3 md:hidden">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setMobileSidebarOpen(true)}
+              className="h-9 w-9 rounded-xl hover:bg-muted text-foreground"
+              aria-label="Toggle Mobile Navigation"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-brand text-white font-black flex items-center justify-center text-sm shadow-sm">
+                O
+              </div>
+              <span className="font-extrabold text-foreground text-sm tracking-tight">
+                ONEMAI
+              </span>
+            </div>
+          </div>
+
+          {/* Desktop Search Launcher (Cmd+K) */}
           <button
             onClick={() => setCommandOpen(true)}
-            className="flex items-center gap-3 px-3.5 py-1.5 rounded-xl border border-border/80 bg-muted/50 hover:bg-muted text-muted-foreground transition-all duration-200 text-xs font-medium w-64"
+            className="hidden md:flex items-center gap-3 px-3.5 py-1.5 rounded-xl border border-border/80 bg-muted/50 hover:bg-muted text-muted-foreground transition-all duration-200 text-xs font-medium w-64"
           >
             <Search className="h-4 w-4 text-muted-foreground" />
             <span className="flex-1 text-left">Search or type command...</span>
@@ -133,7 +158,18 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           </button>
 
           {/* Right Action Icons & User Controls */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Mobile Search Icon Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setCommandOpen(true)}
+              className="md:hidden h-9 w-9 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground"
+              aria-label="Search"
+            >
+              <Search className="h-4 w-4" />
+            </Button>
+
             {/* Theme Toggle */}
             <Button
               variant="ghost"
@@ -199,7 +235,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="flex items-center gap-2.5 h-10 px-2 rounded-xl hover:bg-muted"
+                  className="flex items-center gap-2 h-10 px-1.5 sm:px-2 rounded-xl hover:bg-muted"
                 >
                   <Avatar className="h-8 w-8 ring-2 ring-brand/20">
                     <AvatarImage src="/placeholder-avatar.jpg" />
@@ -207,7 +243,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                       {avatarFallback}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="hidden md:flex flex-col items-start text-left">
+                  <div className="hidden lg:flex flex-col items-start text-left">
                     <span className="text-xs font-semibold text-foreground truncate max-w-[120px]">
                       {displayName}
                     </span>
@@ -215,7 +251,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                       {displayRole}
                     </span>
                   </div>
-                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground hidden sm:block" />
                 </Button>
               </DropdownMenuTrigger>
 
@@ -253,7 +289,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         </header>
 
         {/* Scrollable Main View Window */}
-        <main className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50 dark:bg-background">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 bg-slate-50/50 dark:bg-background">
           {children}
         </main>
       </div>
