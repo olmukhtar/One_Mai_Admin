@@ -53,6 +53,7 @@ type ReferralRow = {
   _id: string;
   name: string;
   email: string;
+  phoneNumber: string;
   status: string;
   joinedAt?: string;
   reward?: number | string;
@@ -192,6 +193,7 @@ function normalizeReferral(raw: any): ReferralRow {
     _id: raw?._id || person?._id || person?.id || crypto.randomUUID(),
     name: buildName(person),
     email: person?.email || raw?.email || "—",
+    phoneNumber: person?.phoneNumber || raw?.phoneNumber || "—",
     status: person?.accountStatus || raw?.status || raw?.state || "unknown",
     joinedAt: person?.createdAt || raw?.createdAt || raw?.joinedAt,
     reward:
@@ -553,6 +555,7 @@ export default function Affiliates() {
                   columns={[
                     { key: "name", label: "Referred User" },
                     { key: "email", label: "Email" },
+                    { key: "phoneNumber", label: "Phone Number" },
                     {
                       key: "status",
                       label: "Status",
