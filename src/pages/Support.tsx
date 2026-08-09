@@ -6,7 +6,8 @@ import { DataTable } from "@/components/admin/DataTable";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Calendar, X, Send, Loader2 } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { X, Send, Loader2, HeadphonesIcon, MessageSquare } from "lucide-react";
 
 import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
 import { API_BASE_URL } from "@/lib/constants";
@@ -68,7 +69,7 @@ function useUserRole(): UserRole | null {
   }, []);
 }
 
-const Support = () => {
+export default function SupportPage() {
   const token = useToken();
   const role = useUserRole();
   const navigate = useNavigate();
@@ -77,16 +78,12 @@ const Support = () => {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
-  const [searchId, setSearchId] = useState("");
 
-  // Modal state
   const [selectedTicket, setSelectedTicket] = useState<Support | null>(null);
   const [replyMessage, setReplyMessage] = useState("");
   const [sendingReply, setSendingReply] = useState(false);
   const [replyError, setReplyError] = useState<string | null>(null);
 
-  // Permission checks based on roles
-  // getAllSupportRequests: admin (full), account (full), customer_support (manage + respond), front_desk (view only)
   const canView = role === "admin" || role === "account" || role === "customer_support" || role === "front_desk";
   const canRespond = role === "admin" || role === "account" || role === "customer_support";
   const isViewOnly = role === "front_desk";
@@ -115,18 +112,17 @@ const Support = () => {
           try {
             const j = await r.json();
             if (j?.message) m = `Failed to load support tickets: ${j.message}`;
-          } catch { }
+          } catch {}
           throw new Error(m);
         }
         return r.json();
       })
       .then((j: any) => {
         const payload = j.data || j;
-        // API returns { data: [...], count: 7 } or { supports: [...] } or direct array
         const supports = payload.data || payload.supports || (Array.isArray(payload) ? payload : []);
         setData({
           supports,
-          message: j.message || payload.message || ""
+          message: j.message || payload.message || "",
         });
       })
       .catch((e: any) => {
@@ -152,13 +148,7 @@ const Support = () => {
   };
 
   const handleSendReply = async () => {
-    if (!replyMessage.trim() || !selectedTicket || !token) return;
-
-    // Check if user can respond
-    if (!canRespond) {
-      setReplyError("You don't have permission to respond to tickets.");
-      return;
-    }
+    if (!replyMessage.trim() || !selectedTicket || !token || !canRespond) return;
 
     setSendingReply(true);
     setReplyError(null);
@@ -169,7 +159,7 @@ const Support = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ message: replyMessage })
+        body: JSON.stringify({ message: replyMessage }),
       });
 
       if (!response.ok) {
@@ -177,7 +167,7 @@ const Support = () => {
         try {
           const errorData = await response.json();
           if (errorData?.message) errorMsg = errorData.message;
-        } catch { }
+        } catch {}
         throw new Error(errorMsg);
       }
 
@@ -185,34 +175,46 @@ const Support = () => {
       const payload = result.data || result;
       const newMessages = payload.messages || (Array.isArray(payload) ? payload : null);
 
-      // Update the ticket in the state
       if (data) {
-        const updatedSupports = data.supports.map(ticket =>
+        const updatedSupports = data.supports.map((ticket) =>
           ticket._id === selectedTicket._id
             ? {
-              ...ticket, messages: newMessages || [...ticket.messages, {
-                _id: Date.now().toString(),
-                sender: "admin",
-                message: replyMessage,
-                attachments: [],
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-              }]
-            }
+                ...ticket,
+                messages:
+                  newMessages || [
+                    ...ticket.messages,
+                    {
+                      _id: Date.now().toString(),
+                      sender: "admin",
+                      message: replyMessage,
+                      attachments: [],
+                      createdAt: new Date().toISOString(),
+                      updatedAt: new Date().toISOString(),
+                    },
+                  ],
+              }
             : ticket
         );
         setData({ ...data, supports: updatedSupports });
-        setSelectedTicket(prev => prev ? {
-          ...prev,
-          messages: newMessages || [...prev.messages, {
-            _id: Date.now().toString(),
-            sender: "admin",
-            message: replyMessage,
-            attachments: [],
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          }]
-        } : null);
+        setSelectedTicket((prev) =>
+          prev
+            ? {
+                ...prev,
+                messages:
+                  newMessages || [
+                    ...prev.messages,
+                    {
+                      _id: Date.now().toString(),
+                      sender: "admin",
+                      message: replyMessage,
+                      attachments: [],
+                      createdAt: new Date().toISOString(),
+                      updatedAt: new Date().toISOString(),
+                    },
+                  ],
+              }
+            : null
+        );
       }
 
       setReplyMessage("");
@@ -224,12 +226,7 @@ const Support = () => {
   };
 
   const handleUpdateStatus = async (newStatus: string) => {
-    if (!selectedTicket || !token) return;
-
-    // Check if user can manage (update status)
-    if (!canRespond) {
-      return;
-    }
+    if (!selectedTicket || !token || !canRespond) return;
 
     try {
       const response = await apiFetch(`${SUPPORTS_URL}/${selectedTicket._id}/status`, {
@@ -237,25 +234,33 @@ const Support = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ status: newStatus })
+        body: JSON.stringify({ status: newStatus }),
       });
 
       if (!response.ok) throw new Error("Failed to update status");
 
-      // Update local state
       if (data) {
-        const updatedSupports = data.supports.map(ticket =>
-          ticket._id === selectedTicket._id
-            ? { ...ticket, status: newStatus }
-            : ticket
+        const updatedSupports = data.supports.map((ticket) =>
+          ticket._id === selectedTicket._id ? { ...ticket, status: newStatus } : ticket
         );
         setData({ ...data, supports: updatedSupports });
-        setSelectedTicket(prev => prev ? { ...prev, status: newStatus } : null);
+        setSelectedTicket((prev) => (prev ? { ...prev, status: newStatus } : null));
       }
     } catch (error) {
       console.error("Failed to update status:", error);
     }
   };
+
+  const filteredTickets = useMemo(() => {
+    if (!data?.supports) return [];
+    let filtered = [...data.supports];
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(
+        (ticket) => ticket.status.toLowerCase() === statusFilter.toLowerCase()
+      );
+    }
+    return filtered;
+  }, [data, statusFilter]);
 
   const columns = [
     {
@@ -264,350 +269,161 @@ const Support = () => {
       render: (value: string, row: Support) => (
         <button
           onClick={() => handleViewTicket(row)}
-          className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
+          className="font-mono text-xs font-bold text-brand hover:underline"
         >
           {value}
         </button>
-      )
+      ),
     },
     {
       key: "full_name",
-      label: "Name",
-      render: (value: string) => (
-        <span className="text-slate-700">{value}</span>
-      )
+      label: "Member Name",
+      render: (v: string) => <span className="font-semibold text-xs text-foreground">{v}</span>,
     },
     { key: "email", label: "Email" },
     {
-      key: "description",
-      label: "Description",
-      render: (value: string) => (
-        <span className="text-slate-600 truncate max-w-xs block">
-          {value.length > 50 ? `${value.substring(0, 50)}...` : value}
-        </span>
-      )
-    },
-    {
       key: "priority",
       label: "Priority",
-      render: (value: string) => <StatusBadge status={value} />
+      render: (v: string) => <StatusBadge status={v} />,
     },
     {
       key: "status",
       label: "Status",
-      render: (value: string) => <StatusBadge status={value} />
+      render: (v: string) => <StatusBadge status={v} />,
     },
     {
       key: "createdAt",
-      label: "Date Created",
-      render: (value: string) =>
-        new Date(value).toLocaleString("en-NG", {
-          year: "numeric",
-          month: "short",
-          day: "2-digit",
-          hour: "2-digit",
-          minute: "2-digit"
-        })
+      label: "Submitted Date",
+      render: (v: string) => (
+        <span className="text-xs text-muted-foreground">
+          {new Date(v).toLocaleDateString("en-NG", {
+            month: "short",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </span>
+      ),
     },
   ];
-
-  // Action items - only for users who can manage
-  const actionItems = canRespond ? [
-    {
-      label: "View Details",
-      onClick: (row: Support) => handleViewTicket(row)
-    },
-    {
-      label: "Mark as Resolved",
-      onClick: (row: Support) => handleUpdateStatus("resolved")
-    },
-    {
-      label: "Mark as Closed",
-      onClick: (row: Support) => handleUpdateStatus("closed")
-    },
-  ] : [
-    {
-      label: "View Details",
-      onClick: (row: Support) => handleViewTicket(row)
-    }
-  ];
-
-  const filteredTickets = useMemo(() => {
-    if (!data?.supports) return [];
-
-    let filtered = [...data.supports];
-
-    if (statusFilter !== "all") {
-      filtered = filtered.filter(ticket =>
-        ticket.status.toLowerCase() === statusFilter.toLowerCase()
-      );
-    }
-
-    if (searchId.trim()) {
-      filtered = filtered.filter(ticket =>
-        ticket.ticketId.toLowerCase().includes(searchId.toLowerCase())
-      );
-    }
-
-    return filtered;
-  }, [data, statusFilter, searchId]);
-
-  const exportToCSV = () => {
-    if (!filteredTickets.length) return;
-
-    const headers = ["Ticket ID", "Name", "Email", "Description", "Priority", "Status", "Date Created"];
-    const rows = filteredTickets.map(t => [
-      t.ticketId,
-      t.full_name,
-      t.email,
-      t.description,
-      t.priority,
-      t.status,
-      new Date(t.createdAt).toLocaleString()
-    ]);
-
-    const csv = [headers, ...rows].map(row =>
-      row.map(cell => `"${cell}"`).join(",")
-    ).join("\n");
-
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `support-tickets-${new Date().toISOString().split("T")[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
 
   return (
     <AdminLayout>
       <div className="space-y-6">
         <PageHeader
-          title="Support"
-          breadcrumbs={[
-            { label: "Dashboard", href: "/dashboard" },
-            { label: "Support" }
-          ]}
-          showSearch={false}
+          title="Support Center Queue"
+          subtitle="Customer inquiry tickets, help center requests, and dispute resolutions."
+          breadcrumbs={[{ label: "Support" }]}
+          showExportButtons
+          rightSlot={
+            <div className="w-36">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="h-9 rounded-xl text-xs border-border/80 bg-card font-medium">
+                  <SelectValue placeholder="Status Filter" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="all">All Tickets</SelectItem>
+                  <SelectItem value="open">Open</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="resolved">Resolved</SelectItem>
+                  <SelectItem value="closed">Closed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          }
         />
 
-        {isViewOnly && (
-          <div className="text-sm text-amber-700 bg-amber-50 p-3 rounded border border-amber-200">
-            You have view-only access to support tickets. You cannot respond or update ticket status.
-          </div>
-        )}
-
         {err && (
-          <div className="text-sm text-red-600 bg-red-50 p-3 rounded border border-red-100">
+          <div className="text-xs font-medium text-rose-600 bg-rose-50 dark:bg-rose-950/40 p-3 rounded-xl border border-rose-200/60 dark:border-rose-800/40">
             {err}
           </div>
         )}
 
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-          <div className="flex items-center gap-2 flex-wrap">
-            <Button variant="outline" size="sm">
-              <Calendar className="h-4 w-4 mr-2" />
-              Date
-            </Button>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="open">Open</SelectItem>
-                <SelectItem value="closed">Closed</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="resolved">Resolved</SelectItem>
-              </SelectContent>
-            </Select>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Ticket ID</span>
-              <input
-                type="text"
-                placeholder="Search ID"
-                value={searchId}
-                onChange={(e) => setSearchId(e.target.value)}
-                className="w-32 h-9 border rounded-md px-3 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
-          </div>
-
-          <div className="flex gap-2 ml-auto">
-            <Button variant="outline" size="sm" onClick={exportToCSV}>
-              <span className="text-primary">📄</span>
-              <span className="ml-2">CSV</span>
-            </Button>
-          </div>
-        </div>
-
         <DataTable
           columns={columns}
-          data={loading ? [] : filteredTickets}
-          actionItems={actionItems}
+          data={filteredTickets}
+          actionItems={[
+            { label: "Inspect Ticket Thread", onClick: (row: Support) => handleViewTicket(row) },
+          ]}
+          loading={loading}
           totalEntries={filteredTickets.length}
         />
 
-        {loading && (
-          <div className="text-center text-sm text-slate-500 py-4">
-            Loading support tickets...
-          </div>
-        )}
+        {/* Modal */}
+        {selectedTicket && (
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <Card className="max-w-2xl w-full max-h-[90vh] rounded-2xl border border-border shadow-2xl bg-card overflow-hidden flex flex-col">
+              <div className="p-4 border-b border-border/60 flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-sm text-foreground">
+                    Ticket {selectedTicket.ticketId}
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    From: {selectedTicket.full_name} ({selectedTicket.email})
+                  </p>
+                </div>
+                <button onClick={handleCloseModal} className="text-muted-foreground hover:text-foreground">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
 
-        {!loading && filteredTickets.length === 0 && !err && (
-          <div className="text-center text-sm text-slate-500 py-8">
-            No support tickets found
+              <div className="p-4 bg-muted/30 border-b border-border/60 space-y-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <StatusBadge status={selectedTicket.status} />
+                  <StatusBadge status={selectedTicket.priority} />
+                </div>
+                <p className="text-foreground font-medium">{selectedTicket.description}</p>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {selectedTicket.messages.map((msg) => (
+                  <div
+                    key={msg._id}
+                    className={`flex flex-col ${
+                      msg.sender.includes("@") ? "items-start" : "items-end"
+                    }`}
+                  >
+                    <div
+                      className={`max-w-[80%] p-3 rounded-2xl text-xs space-y-1 ${
+                        msg.sender.includes("@")
+                          ? "bg-muted text-foreground"
+                          : "bg-brand text-white"
+                      }`}
+                    >
+                      <span className="font-bold block text-[10px] opacity-80">
+                        {msg.sender.includes("@") ? selectedTicket.full_name : "Admin Support"}
+                      </span>
+                      <p>{msg.message}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {canRespond && (
+                <div className="p-4 border-t border-border/60 bg-muted/20 space-y-3 text-xs">
+                  {replyError && <p className="text-rose-600 font-medium">{replyError}</p>}
+                  <div className="flex gap-2">
+                    <textarea
+                      value={replyMessage}
+                      onChange={(e) => setReplyMessage(e.target.value)}
+                      placeholder="Type response to member..."
+                      rows={2}
+                      className="flex-1 rounded-xl border border-border bg-background p-2.5 text-xs"
+                    />
+                    <Button
+                      onClick={handleSendReply}
+                      disabled={sendingReply || !replyMessage.trim()}
+                      className="h-auto px-4 bg-brand hover:bg-brand-hover text-white rounded-xl"
+                    >
+                      {sendingReply ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </Card>
           </div>
         )}
       </div>
-
-      {/* Ticket Details Modal */}
-      {selectedTicket && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-            {/* Modal Header */}
-            <div className="p-6 border-b border-slate-200 flex items-start justify-between">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900">
-                  {selectedTicket.ticketId}
-                </h2>
-                <p className="text-sm text-slate-500 mt-1">
-                  {selectedTicket.full_name} • {selectedTicket.email}
-                </p>
-              </div>
-              <button
-                onClick={handleCloseModal}
-                className="text-slate-400 hover:text-slate-600"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Ticket Info */}
-            <div className="p-6 border-b border-slate-200 bg-slate-50">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <span className="text-xs font-medium text-slate-500">Status</span>
-                  <div className="mt-1">
-                    <StatusBadge status={selectedTicket.status} />
-                  </div>
-                </div>
-                <div>
-                  <span className="text-xs font-medium text-slate-500">Priority</span>
-                  <div className="mt-1">
-                    <StatusBadge status={selectedTicket.priority} />
-                  </div>
-                </div>
-                <div className="col-span-2">
-                  <span className="text-xs font-medium text-slate-500">Description</span>
-                  <p className="mt-1 text-sm text-slate-700">{selectedTicket.description}</p>
-                </div>
-              </div>
-
-              {/* Status Update Buttons - Only show if user can respond/manage */}
-              {canRespond && (
-                <div className="flex gap-2 mt-4">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleUpdateStatus("resolved")}
-                    disabled={selectedTicket.status === "resolved"}
-                  >
-                    Mark Resolved
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleUpdateStatus("closed")}
-                    disabled={selectedTicket.status === "closed"}
-                  >
-                    Close Ticket
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleUpdateStatus("open")}
-                    disabled={selectedTicket.status === "open"}
-                  >
-                    Reopen
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
-              {selectedTicket.messages.map((msg, idx) => (
-                <div
-                  key={msg._id}
-                  className={`flex ${msg.sender.includes("@") ? "justify-start" : "justify-end"}`}
-                >
-                  <div className={`max-w-[70%] ${msg.sender.includes("@") ? "bg-slate-100" : "bg-blue-100"} rounded-lg p-4`}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-medium text-slate-700">
-                        {msg.sender.includes("@") ? selectedTicket.full_name : "Admin"}
-                      </span>
-                      <span className="text-xs text-slate-500">
-                        {new Date(msg.createdAt).toLocaleString("en-NG", {
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit"
-                        })}
-                      </span>
-                    </div>
-                    <p className="text-sm text-slate-700">{msg.message}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Reply Input - Only show if user can respond */}
-            {canRespond && (
-              <div className="p-6 border-t border-slate-200 bg-slate-50">
-                {replyError && (
-                  <div className="mb-3 text-sm text-red-600 bg-red-50 p-2 rounded border border-red-100">
-                    {replyError}
-                  </div>
-                )}
-                <div className="flex gap-2">
-                  <textarea
-                    value={replyMessage}
-                    onChange={(e) => setReplyMessage(e.target.value)}
-                    placeholder="Type your reply..."
-                    className="flex-1 border border-slate-300 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                    rows={3}
-                    disabled={sendingReply}
-                  />
-                  <Button
-                    onClick={handleSendReply}
-                    disabled={!replyMessage.trim() || sendingReply}
-                    className="self-end"
-                  >
-                    {sendingReply ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* View Only Message for Front Desk */}
-            {isViewOnly && (
-              <div className="p-6 border-t border-slate-200 bg-amber-50">
-                <p className="text-sm text-amber-700 text-center">
-                  You have view-only access and cannot respond to this ticket.
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </AdminLayout>
   );
-};
-
-export default Support;
+}

@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/admin/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/admin/StatusBadge";
-import { Shield, ArrowLeft } from "lucide-react";
+import { Shield, ArrowLeft, Users2, Calendar, Clock, CreditCard } from "lucide-react";
 
 import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
 import { API_BASE_URL } from "@/lib/constants";
@@ -94,18 +94,16 @@ function ngn(n: number) {
 }
 
 function getFrequencyLabel(frequency: string) {
-  if (!frequency) return "";
-  
+  if (!frequency) return "—";
   const freq = frequency.toLowerCase();
   const freqMap: Record<string, string> = {
-    'day': 'Daily',
-    'daily': 'Daily',
-    'week': 'Weekly',
-    'weekly': 'Weekly',
-    'month': 'Monthly',
-    'monthly': 'Monthly',
+    day: "Daily",
+    daily: "Daily",
+    week: "Weekly",
+    weekly: "Weekly",
+    month: "Monthly",
+    monthly: "Monthly",
   };
-  
   return freqMap[freq] || frequency;
 }
 
@@ -142,7 +140,7 @@ export default function GroupDetails() {
           try {
             const j = await r.json();
             if (j?.message) m = `Failed to load group: ${j.message}`;
-          } catch { }
+          } catch {}
           throw new Error(m);
         }
         return r.json();
@@ -174,111 +172,121 @@ export default function GroupDetails() {
     <AdminLayout>
       <div className="space-y-6">
         <PageHeader
-          title={g?.name || "Group"}
+          title={g?.name || "Savings Circle"}
+          subtitle="Inspect circle payout rotation, member status, and savings frequency."
           breadcrumbs={[
-            { label: "Dashboard", href: "/dashboard" },
             { label: "Groups", href: "/groups" },
-            { label: g?.name || "Group" },
+            { label: g?.name || "Group Details" },
           ]}
           rightSlot={
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => navigate(-1)}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/groups")}
+              className="h-9 gap-1.5 rounded-xl border-border/80 text-xs font-medium"
+            >
+              <ArrowLeft className="h-4 w-4" /> Back to Groups
+            </Button>
           }
         />
 
         {err && (
-          <div className="text-sm text-red-600 bg-red-50 p-2 rounded border border-red-100">
+          <div className="text-xs font-medium text-rose-600 bg-rose-50 dark:bg-rose-950/40 p-3 rounded-xl border border-rose-200/60 dark:border-rose-800/40">
             {err}
           </div>
         )}
 
-        {/* Overview */}
-        <Card className="border border-slate-100 shadow-sm rounded-xl">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">Overview</CardTitle>
+        {/* Executive Overview */}
+        <Card className="border border-border/80 shadow-sm rounded-2xl bg-card overflow-hidden">
+          <CardHeader className="border-b border-border/60 pb-3">
+            <CardTitle className="text-base font-semibold text-foreground">
+              Circle Overview & Rotation Config
+            </CardTitle>
           </CardHeader>
-          <CardContent className="pt-0 text-sm">
+          <CardContent className="pt-5 text-xs">
             {loading ? (
-              <div className="text-slate-500">Loading…</div>
+              <div className="py-8 text-center text-muted-foreground animate-pulse">
+                Loading circle details...
+              </div>
             ) : !g ? (
-              <div className="text-slate-500">Group not found.</div>
+              <div className="py-8 text-center text-muted-foreground">
+                Group details unavailable.
+              </div>
             ) : (
-              <div className="grid md:grid-cols-4 grid-cols-2 gap-4 text-slate-800">
-                <div>
-                  <div className="text-slate-500">Name</div>
-                  <div className="font-medium">{g.name}</div>
-                </div>
-                <div>
-                  <div className="text-slate-500">Admin</div>
-                  <div className="font-mono text-xs">
-                    {g.admin?.email || g.members?.find((m) => m.role === "admin")?.user?.email || "—"}
+              <div className="space-y-6">
+                <div className="grid md:grid-cols-4 grid-cols-2 gap-4">
+                  <div className="p-3 rounded-xl bg-muted/40 space-y-1">
+                    <span className="text-muted-foreground font-medium">Circle Name</span>
+                    <p className="font-bold text-foreground text-sm">{g.name}</p>
+                  </div>
+                  <div className="p-3 rounded-xl bg-muted/40 space-y-1">
+                    <span className="text-muted-foreground font-medium">Admin / Lead</span>
+                    <p className="font-mono text-foreground font-semibold truncate">
+                      {g.admin?.email ||
+                        g.members?.find((m) => m.role === "admin")?.user?.email ||
+                        "—"}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-xl bg-muted/40 space-y-1">
+                    <span className="text-muted-foreground font-medium">Contribution Amount</span>
+                    <p className="font-bold text-brand text-sm">{ngn(g.savingsAmount)}</p>
+                  </div>
+                  <div className="p-3 rounded-xl bg-muted/40 space-y-1">
+                    <span className="text-muted-foreground font-medium">Frequency</span>
+                    <p className="font-semibold text-foreground">
+                      {getFrequencyLabel(g.frequency)}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-xl bg-muted/40 space-y-1">
+                    <span className="text-muted-foreground font-medium">Circle Status</span>
+                    <div>
+                      <StatusBadge status={g.status} />
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-muted/40 space-y-1">
+                    <span className="text-muted-foreground font-medium">Next Payout Date</span>
+                    <p className="font-semibold text-foreground">
+                      {g.nextPayoutDate
+                        ? new Date(g.nextPayoutDate).toLocaleDateString("en-NG", {
+                            year: "numeric",
+                            month: "short",
+                            day: "2-digit",
+                          })
+                        : "—"}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-xl bg-muted/40 space-y-1">
+                    <span className="text-muted-foreground font-medium">Invite Code</span>
+                    <p className="font-mono text-foreground font-semibold">{g.inviteCode || "—"}</p>
+                  </div>
+                  <div className="p-3 rounded-xl bg-muted/40 space-y-1">
+                    <span className="text-muted-foreground font-medium">Current Cycle</span>
+                    <p className="font-bold text-foreground text-sm">{g.currentCycle ?? "1"}</p>
                   </div>
                 </div>
-                <div>
-                  <div className="text-slate-500">Savings Amount</div>
-                  <div>{ngn(g.savingsAmount)}</div>
-                </div>
-                <div>
-                  <div className="text-slate-500">Frequency</div>
-                  <div>{getFrequencyLabel(g.frequency)}</div>
-                </div>
-                <div>
-                  <div className="text-slate-500">Status</div>
-                  <div><StatusBadge status={g.status} /></div>
-                </div>
-                <div>
-                  <div className="text-slate-500">Next Payout</div>
-                  <div>
-                    {g.nextPayoutDate
-                      ? new Date(g.nextPayoutDate).toLocaleString("en-NG", {
-                        year: "numeric",
-                        month: "short",
-                        day: "2-digit",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })
-                      : "—"}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-slate-500">Invite Code</div>
-                  <div className="font-mono text-xs">{g.inviteCode || "—"}</div>
-                </div>
-                <div>
-                  <div className="text-slate-500">Current Cycle</div>
-                  <div>{g.currentCycle ?? "—"}</div>
-                </div>
-                <div className="col-span-2">
-                  <div className="text-slate-500">Next Recipient</div>
-                  <div className="flex items-center gap-2">
-                    <Shield className="h-4 w-4 text-slate-500" />
-                    <span className="font-mono text-xs">
-                      {typeof g.nextRecipient === "string"
-                        ? g.nextRecipient
-                        : g.nextRecipient?.email || "—"}
-                    </span>
-                  </div>
-                </div>
-                <div className="col-span-2">
-                  <div className="text-slate-500">Payout Order</div>
-                  <div className="flex flex-wrap gap-2">
+
+                <div className="p-4 rounded-xl border border-border/80 bg-muted/20 space-y-2">
+                  <span className="text-muted-foreground font-semibold uppercase tracking-wider text-[10px]">
+                    Rotation Payout Order
+                  </span>
+                  <div className="flex flex-wrap gap-2 pt-1">
                     {g.payoutOrder?.map((p, i) => (
                       <span
                         key={i}
-                        className={
-                          "px-2 py-1 rounded-full text-xs border " +
-                          (i === g.currentPayoutIndex
-                            ? "bg-blue-50 border-blue-200 text-blue-700"
-                            : "bg-slate-50 border-slate-200 text-slate-700")
-                        }
+                        className={`px-3 py-1 rounded-full text-xs font-medium border ${
+                          i === g.currentPayoutIndex
+                            ? "bg-brand text-white border-brand shadow-sm font-bold"
+                            : "bg-card border-border text-foreground"
+                        }`}
                       >
-                        {typeof p === "string" ? p : p.email}
+                        #{i + 1} {typeof p === "string" ? p : p.email}
                       </span>
                     ))}
+                    {(!g.payoutOrder || g.payoutOrder.length === 0) && (
+                      <span className="text-muted-foreground text-xs">
+                        No payout order generated yet.
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -286,36 +294,42 @@ export default function GroupDetails() {
           </CardContent>
         </Card>
 
-        {/* Members */}
-        <Card className="border border-slate-100 shadow-sm rounded-xl">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">Members</CardTitle>
+        {/* Member Roster */}
+        <Card className="border border-border/80 shadow-sm rounded-2xl bg-card overflow-hidden">
+          <CardHeader className="border-b border-border/60 pb-3">
+            <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
+              <Users2 className="h-4 w-4 text-brand" /> Circle Members ({data?.members?.length || 0})
+            </CardTitle>
           </CardHeader>
-          <CardContent className="pt-0">
+          <CardContent className="p-0">
             {loading ? (
-              <div className="text-slate-500 text-sm">Loading…</div>
+              <div className="p-6 text-center text-xs text-muted-foreground animate-pulse">
+                Loading members...
+              </div>
             ) : (data?.members?.length || 0) === 0 ? (
-              <div className="text-slate-500 text-sm">No members.</div>
+              <div className="p-8 text-center text-xs text-muted-foreground">
+                No active members in this circle.
+              </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead className="text-left text-slate-500">
-                    <tr className="border-b border-slate-100">
-                      <th className="py-2 pr-4">User</th>
-                      <th className="py-2 pr-4">Status</th>
-                      <th className="py-2 pr-4">Joined</th>
+                <table className="w-full text-xs">
+                  <thead className="bg-muted/40 text-left text-muted-foreground font-semibold uppercase">
+                    <tr className="border-b border-border/60">
+                      <th className="py-3 px-4">Member Email</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4">Date Joined</th>
                     </tr>
                   </thead>
-                  <tbody className="text-slate-800">
+                  <tbody className="divide-y divide-border/40 text-foreground">
                     {data!.members.map((m) => (
-                      <tr key={m._id} className="border-b border-slate-100">
-                        <td className="py-2 pr-4 font-mono text-xs">
+                      <tr key={m._id} className="hover:bg-brand/5 transition-colors">
+                        <td className="py-3 px-4 font-mono font-medium text-brand">
                           {typeof m.user === "string" ? m.user : m.user.email}
                         </td>
-                        <td className="py-2 pr-4">
-                          <StatusBadge status={m.status} />
+                        <td className="py-3 px-4">
+                          <StatusBadge status={m.status || "active"} />
                         </td>
-                        <td className="py-2 pr-4">
+                        <td className="py-3 px-4 text-muted-foreground">
                           {new Date(m.joinedAt).toLocaleDateString("en-NG", {
                             year: "numeric",
                             month: "short",
@@ -330,34 +344,6 @@ export default function GroupDetails() {
             )}
           </CardContent>
         </Card>
-
-        {/* Placeholders for future data */}
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Card className="border border-slate-100 shadow-sm rounded-xl">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base font-semibold">Contributions</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0 text-sm">
-              {(data?.contributions?.length || 0) === 0 ? (
-                <div className="text-slate-500">No contributions.</div>
-              ) : (
-                <div>Coming soon.</div>
-              )}
-            </CardContent>
-          </Card>
-          <Card className="border border-slate-100 shadow-sm rounded-xl">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base font-semibold">Payouts</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0 text-sm">
-              {(data?.payouts?.length || 0) === 0 ? (
-                <div className="text-slate-500">No payouts.</div>
-              ) : (
-                <div>Coming soon.</div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
       </div>
     </AdminLayout>
   );

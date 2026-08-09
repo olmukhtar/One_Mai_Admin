@@ -1,54 +1,113 @@
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 interface StatusBadgeProps {
   status?: string | null;
-  variant?: "success" | "warning" | "destructive" | "secondary";
+  variant?: "success" | "warning" | "destructive" | "info" | "secondary";
+  showDot?: boolean;
+  className?: string;
 }
 
-export function StatusBadge({ status, variant = "secondary" }: StatusBadgeProps) {
+export function StatusBadge({
+  status,
+  variant,
+  showDot = true,
+  className,
+}: StatusBadgeProps) {
   const label = status == null || status === "" ? "—" : String(status);
+  const normalized = label.toLowerCase();
 
-  const getVariantFromStatus = (status: string) => {
-    const lowercaseStatus = status.toLowerCase();
-    
-    if (lowercaseStatus.includes("verified") || 
-        lowercaseStatus.includes("active") || 
-        lowercaseStatus.includes("completed") ||
-        lowercaseStatus.includes("successful")) {
+  const getVariant = (): "success" | "warning" | "destructive" | "info" | "secondary" => {
+    if (variant) return variant;
+    if (
+      normalized.includes("verified") ||
+      normalized.includes("active") ||
+      normalized.includes("completed") ||
+      normalized.includes("successful") ||
+      normalized.includes("approved") ||
+      normalized.includes("published") ||
+      normalized.includes("success")
+    ) {
       return "success";
     }
-    
-    if (lowercaseStatus.includes("pending")) {
+
+    if (
+      normalized.includes("pending") ||
+      normalized.includes("in_progress") ||
+      normalized.includes("review") ||
+      normalized.includes("draft")
+    ) {
       return "warning";
     }
-    
-    if (lowercaseStatus.includes("failed") || 
-        lowercaseStatus.includes("rejected")) {
+
+    if (
+      normalized.includes("failed") ||
+      normalized.includes("rejected") ||
+      normalized.includes("suspended") ||
+      normalized.includes("inactive") ||
+      normalized.includes("cancelled")
+    ) {
       return "destructive";
     }
-    
+
+    if (
+      normalized.includes("processing") ||
+      normalized.includes("assigned") ||
+      normalized.includes("open")
+    ) {
+      return "info";
+    }
+
     return "secondary";
   };
 
-  const actualVariant = variant === "secondary" ? getVariantFromStatus(label) : variant;
+  const actualVariant = getVariant();
 
-  const variantClasses = {
-    success: "bg-success/10 text-success hover:bg-success/20 border-success/20",
-    warning: "bg-warning/10 text-warning hover:bg-warning/20 border-warning/20",
-    destructive: "bg-destructive/10 text-destructive hover:bg-destructive/20 border-destructive/20",
-    secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+  const styles = {
+    success:
+      "bg-emerald-50 text-emerald-700 border-emerald-200/60 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/40",
+    warning:
+      "bg-amber-50 text-amber-700 border-amber-200/60 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800/40",
+    destructive:
+      "bg-rose-50 text-rose-700 border-rose-200/60 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800/40",
+    info:
+      "bg-blue-50 text-brand border-blue-200/60 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800/40",
+    secondary:
+      "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700",
+  };
+
+  const dotColors = {
+    success: "bg-emerald-500",
+    warning: "bg-amber-500",
+    destructive: "bg-rose-500",
+    info: "bg-brand",
+    secondary: "bg-slate-400",
   };
 
   return (
-    <Badge 
-      variant="outline" 
+    <span
       className={cn(
-        "font-medium",
-        variantClasses[actualVariant]
+        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize tracking-wide transition-colors",
+        styles[actualVariant],
+        className
       )}
     >
+      {showDot && (
+        <span className="relative flex h-1.5 w-1.5">
+          <span
+            className={cn(
+              "absolute inline-flex h-full w-full animate-ping rounded-full opacity-75",
+              dotColors[actualVariant]
+            )}
+          />
+          <span
+            className={cn(
+              "relative inline-flex h-1.5 w-1.5 rounded-full",
+              dotColors[actualVariant]
+            )}
+          />
+        </span>
+      )}
       {label}
-    </Badge>
+    </span>
   );
 }
