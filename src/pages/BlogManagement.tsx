@@ -210,7 +210,7 @@ export default function BlogManagement() {
                 className="border border-border/80 shadow-sm rounded-2xl bg-card hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 overflow-hidden flex flex-col justify-between"
               >
                 {/* Post Image */}
-                {post.image && (
+                {post.image ? (
                   <div className="relative h-48 bg-slate-100 overflow-hidden">
                     <img
                       src={post.image}
@@ -219,10 +219,11 @@ export default function BlogManagement() {
                     />
                     <div className="absolute top-2 right-2 flex flex-col gap-2 items-end">
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-medium ${post.status === "published"
-                          ? "bg-emerald-500 text-white"
-                          : "bg-amber-500 text-white"
-                          }`}
+                        className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          post.status === "published"
+                            ? "bg-emerald-500 text-white"
+                            : "bg-amber-500 text-white"
+                        }`}
                       >
                         {post.status}
                       </span>
@@ -233,24 +234,43 @@ export default function BlogManagement() {
                         </span>
                       )}
                     </div>
-                  )}
+                  </div>
+                ) : (
+                  /* If no image, render status and domain badges in a smaller header area */
+                  <div className="p-4 pb-0 flex justify-end gap-2">
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        post.status === "published"
+                          ? "bg-emerald-500 text-white"
+                          : "bg-amber-500 text-white"
+                      }`}
+                    >
+                      {post.status}
+                    </span>
+                    {post.domain && (
+                      <span className="px-2 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-[#1766a4] border border-slate-200 shadow-sm flex items-center gap-1">
+                        <Globe className="h-2.5 w-2.5" />
+                        {post.domain}
+                      </span>
+                    )}
+                  </div>
+                )}
 
-                  <CardHeader className="pb-2 pt-4 px-5">
-                    <CardTitle className="text-base font-bold text-foreground line-clamp-2 leading-snug">
-                      {post.title}
-                    </CardTitle>
-                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mt-1">
-                      <Calendar className="h-3.5 w-3.5" />
-                      <span>{formatDate(post.createdAt)}</span>
-                    </div>
-                  </CardHeader>
+                <CardHeader className="pb-2 pt-4 px-5">
+                  <CardTitle className="text-base font-bold text-foreground line-clamp-2 leading-snug">
+                    {post.title}
+                  </CardTitle>
+                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mt-1">
+                    <Calendar className="h-3.5 w-3.5" />
+                    <span>{formatDate(post.createdAt)}</span>
+                  </div>
+                </CardHeader>
 
-                  <CardContent className="px-5 pt-0">
-                    <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">
-                      {post.content}
-                    </p>
-                  </CardContent>
-                </div>
+                <CardContent className="px-5 pt-0">
+                  <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">
+                    {post.content}
+                  </p>
+                </CardContent>
 
                 <div className="p-4 border-t border-border/60 flex items-center justify-between gap-2 bg-muted/20">
                   <Button

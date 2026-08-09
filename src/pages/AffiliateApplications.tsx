@@ -12,6 +12,7 @@ import { ShieldAlert, RefreshCw, AlertCircle, CheckCircle2, ClipboardCheck } fro
 
 import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
 import { API_BASE_URL } from "@/lib/constants";
+import { AffiliateInspectionModal } from "@/components/admin/AffiliateInspectionModal";
 
 type Socials = {
   instagram?: string;
@@ -58,6 +59,7 @@ type Application = {
   reviewNote?: string | null;
   reviewedBy?: string | null;
   status: ApplicationStatus;
+  referrals?: any[];
 };
 
 type ListResponse = {
@@ -145,6 +147,16 @@ export default function AffiliateApplications() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  // Affiliate inspection state
+  const [inspectOpen, setInspectOpen] = useState(false);
+  const [selectedAffiliate, setSelectedAffiliate] = useState<{
+    userId: string;
+    name: string;
+    email: string;
+    referralCode?: string;
+    image?: string;
+  } | null>(null);
+
   const fetchApplications = () => {
     if (!token || !canView) return;
 
@@ -163,7 +175,7 @@ export default function AffiliateApplications() {
           try {
             const j = await res.json();
             if (j?.message) msg = `Failed to load affiliate applications: ${j.message}`;
-          } catch {}
+          } catch { }
           throw new Error(msg);
         }
         return res.json();
@@ -275,6 +287,18 @@ export default function AffiliateApplications() {
       ),
     },
     {
+      key: "totalReferrals",
+      label: "Total Referrals",
+      render: (_: any, row: Application) => {
+        const referrals = row.referrals?.length ?? 0;
+        return (
+          <span className="font-semibold text-xs text-foreground">
+            {referrals.toLocaleString()}
+          </span>
+        );
+      },
+    },
+    {
       key: "status",
       label: "Review Status",
       render: (v: ApplicationStatus) => <StatusBadge status={humanizeStatus(v)} />,
@@ -345,6 +369,19 @@ export default function AffiliateApplications() {
               label: "Review Application",
               onClick: (row: Application) => navigate(`/affiliate-applications/${row._id}`),
             },
+            {
+              label: "Inspect Referrals & Remarks",
+              onClick: (row: Application) => {
+                setSelectedAffiliate({
+                  userId: row.user._id,
+                  name: nameOf(row.user),
+                  email: row.user.email,
+                  referralCode: row.user.referralCode,
+                  image: row.user.image,
+                });
+                setInspectOpen(true);
+              },
+            },
           ]}
           currentPage={page}
           totalPages={totalPages}
@@ -353,6 +390,12 @@ export default function AffiliateApplications() {
           loading={loading}
         />
       </div>
+
+      <AffiliateInspectionModal
+        open={inspectOpen}
+        onOpenChange={setInspectOpen}
+        affiliate={selectedAffiliate}
+      />
     </AdminLayout>
   );
 }

@@ -71,12 +71,7 @@ const mainItems = [
     icon: ClipboardCheck,
     roles: ["Admin", "Account", "admin"],
   },
-  {
-    title: "Affiliates",
-    url: "/affiliates",
-    icon: UserCheck,
-    roles: ["Admin", "Account", "Front Desk", "Customer Support", "admin"],
-  },
+
   {
     title: "Transactions",
     url: "/transactions",
