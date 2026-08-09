@@ -240,7 +240,7 @@ export default function BlogManagement() {
                 {post.image && (
                   <div className="relative h-48 bg-slate-100 overflow-hidden">
                     <img
-                      src={resolveImageUrl(post.image)}
+                      src={post.image}
                       alt={post.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
