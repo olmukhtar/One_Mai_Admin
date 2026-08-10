@@ -51,7 +51,7 @@ interface AffiliateInspectionModalProps {
   } | null;
 }
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 500;
 const AFFILIATE_REFERRALS_URL = (userId: string) =>
   `${API_BASE_URL}/admin/affiliate/${userId}/referrals`;
 const AFFILIATE_REMARKS_URL = (userId: string) =>
