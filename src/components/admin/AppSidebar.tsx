@@ -66,7 +66,7 @@ const mainItems = [
     roles: ["Admin", "Account", "Front Desk", "Customer Support", "admin"],
   },
   {
-    title: "Affiliate Applications",
+    title: "Partner Applications",
     url: "/affiliate-applications",
     icon: ClipboardCheck,
     roles: ["Admin", "Account", "admin"],

@@ -217,7 +217,7 @@ export default function UserDetails() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ percentage }),
       });
-      if (!res.ok) throw new Error("Affiliate approval failed");
+      if (!res.ok) throw new Error("Partner approval failed");
 
       if (data) {
         setData({
@@ -226,7 +226,7 @@ export default function UserDetails() {
         });
       }
       toast({
-        title: "Affiliate Approved",
+        title: "Partner Approved",
         description: `Member approved with a ${pNum}% commission rate.`,
       });
       setShowApprovalModal(false);
@@ -393,7 +393,7 @@ export default function UserDetails() {
                     onClick={() => setShowApprovalModal(true)}
                     className="h-9 px-4 rounded-xl bg-brand hover:bg-brand-hover text-white text-xs font-semibold shadow-md"
                   >
-                    <Award className="h-3.5 w-3.5 mr-1.5" /> Approve Affiliate
+                    <Award className="h-3.5 w-3.5 mr-1.5" /> Approve Partner
                   </Button>
                 )}
               </div>
@@ -528,7 +528,7 @@ export default function UserDetails() {
                   <div className="bg-brand/10 p-4 rounded-2xl border border-brand/20 space-y-3 mt-2">
                     <div className="flex justify-between items-center">
                       <span className="text-xs font-bold text-brand uppercase tracking-wide flex items-center gap-1.5">
-                        <Award className="h-4 w-4" /> Affiliate Partner
+                        <Award className="h-4 w-4" /> Partner
                       </span>
                       <StatusBadge status={isApprovedAffiliate ? "Approved" : "Pending Approval"} />
                     </div>
@@ -569,7 +569,7 @@ export default function UserDetails() {
                           className="w-full h-8 text-xs rounded-xl bg-brand hover:bg-brand-hover text-white font-semibold shadow-xs"
                           onClick={() => setShowApprovalModal(true)}
                         >
-                          Approve Affiliate Application
+                          Approve Partner Application
                         </Button>
                       )
                     )}
@@ -725,7 +725,7 @@ export default function UserDetails() {
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <Card className="max-w-md w-full rounded-2xl border border-border shadow-2xl bg-card p-6">
             <CardHeader className="border-b border-border/60 pb-3">
-              <CardTitle className="text-base font-bold">Approve Affiliate Candidate</CardTitle>
+              <CardTitle className="text-base font-bold">Approve Partner Candidate</CardTitle>
             </CardHeader>
             <CardContent className="pt-4 space-y-4 text-xs">
               <p className="text-muted-foreground leading-relaxed">

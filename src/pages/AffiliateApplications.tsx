@@ -171,10 +171,10 @@ export default function AffiliateApplications() {
     apiFetch(url.toString())
       .then(async (res) => {
         if (!res.ok) {
-          let msg = `Failed to load affiliate applications: ${res.status}`;
+          let msg = `Failed to load partner applications: ${res.status}`;
           try {
             const j = await res.json();
-            if (j?.message) msg = `Failed to load affiliate applications: ${j.message}`;
+            if (j?.message) msg = `Failed to load partner applications: ${j.message}`;
           } catch { }
           throw new Error(msg);
         }
@@ -184,7 +184,7 @@ export default function AffiliateApplications() {
         setRows(json.data || []);
       })
       .catch((e: any) => {
-        setErr(e?.message || "Failed to load affiliate applications");
+        setErr(e?.message || "Failed to load partner applications");
       })
       .finally(() => setLoading(false));
   };
@@ -195,7 +195,7 @@ export default function AffiliateApplications() {
       return;
     }
     if (!canView) {
-      setErr("You don't have permission to view affiliate applications.");
+      setErr("You don't have permission to view partner applications.");
       return;
     }
     fetchApplications();
@@ -206,15 +206,15 @@ export default function AffiliateApplications() {
       <AdminLayout>
         <div className="space-y-6">
           <PageHeader
-            title="Affiliate Applications"
-            breadcrumbs={[{ label: "Affiliate Applications" }]}
+            title="Partner Applications"
+            breadcrumbs={[{ label: "Partner Applications" }]}
           />
           <Card className="max-w-xl border border-border shadow-sm rounded-2xl p-6 bg-card">
             <div className="flex flex-col items-center justify-center text-center space-y-3">
               <ShieldAlert className="h-8 w-8 text-rose-600" />
               <h3 className="text-base font-bold text-foreground">Access Restricted</h3>
               <p className="text-xs text-muted-foreground">
-                Affiliate application reviews are restricted to Admin and Account managers.
+                Partner application reviews are restricted to Admin and Account managers.
               </p>
               <Button onClick={() => navigate("/dashboard")} variant="outline" className="rounded-xl text-xs">
                 Back to Dashboard
@@ -322,9 +322,9 @@ export default function AffiliateApplications() {
     <AdminLayout>
       <div className="space-y-6">
         <PageHeader
-          title="Affiliate Application Pipeline"
+          title="Partner Application Pipeline"
           subtitle="Review candidate applications, inspect audience size metrics, and approve commission tiers."
-          breadcrumbs={[{ label: "Affiliate Applications" }]}
+          breadcrumbs={[{ label: "Partner Applications" }]}
           showExportButtons
           rightSlot={
             <div className="flex items-center gap-2">

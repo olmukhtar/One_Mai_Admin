@@ -38,7 +38,7 @@ const options: NavOption[] = [
   { title: "Groups", url: "/groups", category: "Navigation", icon: Users2 },
   { title: "Transactions", url: "/transactions", category: "Navigation", icon: CreditCard },
   { title: "Monify Payouts", url: "/monify", category: "Navigation", icon: Wallet },
-  { title: "Affiliate Applications", url: "/affiliate-applications", category: "Affiliates", icon: ClipboardCheck },
+  { title: "Partner Applications", url: "/affiliate-applications", category: "Partners", icon: ClipboardCheck },
   { title: "Group Contributions", url: "/reports/group-contributions", category: "Reports", icon: TrendingUp },
   { title: "Withdrawals Report", url: "/reports/withdrawals", category: "Reports", icon: Wallet },
   { title: "Members Activity", url: "/reports/members-activity", category: "Reports", icon: Activity },

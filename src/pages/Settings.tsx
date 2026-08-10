@@ -155,7 +155,7 @@ export default function Settings() {
                   <div className="flex items-center gap-2 p-3 rounded-xl bg-muted/40 border border-border/60">
                     <Checkbox id="email-users" defaultChecked />
                     <Label htmlFor="email-users" className="font-medium cursor-pointer">
-                      Email notifications for new affiliate partner submissions
+                      Email notifications for new partner submissions
                     </Label>
                   </div>
                   <div className="flex items-center gap-2 p-3 rounded-xl bg-muted/40 border border-border/60">

@@ -298,10 +298,10 @@ export default function AffiliateApplicationDetail() {
       <AdminLayout>
         <div className="space-y-6">
           <PageHeader
-            title="Affiliate Application"
+            title="Partner Application"
             breadcrumbs={[
               { label: "Dashboard", href: "/dashboard" },
-              { label: "Affiliate Applications", href: "/affiliate-applications" },
+              { label: "Partner Applications", href: "/affiliate-applications" },
               { label: "Application" },
             ]}
             rightSlot={
@@ -331,7 +331,7 @@ export default function AffiliateApplicationDetail() {
           title={nameOf(u)}
           breadcrumbs={[
             { label: "Dashboard", href: "/dashboard" },
-            { label: "Affiliate Applications", href: "/affiliate-applications" },
+            { label: "Partner Applications", href: "/affiliate-applications" },
             { label: nameOf(u) },
           ]}
           rightSlot={
@@ -577,7 +577,7 @@ export default function AffiliateApplicationDetail() {
                       className={`w-full px-3 py-2 border-2 rounded-lg focus:outline-none focus:ring-2 focus:border-transparent text-sm font-medium ${reviewStatus === "approved" ? "border-purple-300 bg-white focus:ring-purple-500" : "border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed"}`}
                     />
                     <p className={`text-xs ${reviewStatus === "approved" ? "text-purple-700" : "text-slate-500"}`}>
-                      {reviewStatus === "approved" ? "Commission to award this affiliate" : "Required when approving"}
+                      {reviewStatus === "approved" ? "Commission to award this partner" : "Required when approving"}
                     </p>
                   </div>
 

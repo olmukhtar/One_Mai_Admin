@@ -35,7 +35,7 @@ type SystemNotification = {
 const initialNotifications: SystemNotification[] = [
   {
     id: "notif-1",
-    title: "New Affiliate Partner Application",
+    title: "New Partner Application",
     message: "Candidate Chibuzor Aghandu submitted an application with 45,000 estimated audience reach.",
     time: "10 mins ago",
     category: "affiliate",
@@ -180,7 +180,7 @@ export default function NotificationsPage() {
                 Unread ({unreadCount})
               </TabsTrigger>
               <TabsTrigger value="affiliate" className="rounded-lg text-xs font-semibold">
-                Affiliates
+                Partners
               </TabsTrigger>
               <TabsTrigger value="payout" className="rounded-lg text-xs font-semibold">
                 Payouts
