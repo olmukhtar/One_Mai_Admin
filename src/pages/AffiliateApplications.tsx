@@ -146,10 +146,10 @@ export default function AffiliateApplications() {
     apiFetch(url.toString())
       .then(async (res) => {
         if (!res.ok) {
-          let msg = `Failed to load affiliate applications: ${res.status}`;
+          let msg = `Failed to load partner applications: ${res.status}`;
           try {
             const j = await res.json();
-            if (j?.message) msg = `Failed to load affiliate applications: ${j.message}`;
+            if (j?.message) msg = `Failed to load partner applications: ${j.message}`;
           } catch { }
           throw new Error(msg);
         }
@@ -159,7 +159,7 @@ export default function AffiliateApplications() {
         setRows(json.data || []);
       })
       .catch((e: any) => {
-        setErr(e?.message || "Failed to load affiliate applications");
+        setErr(e?.message || "Failed to load partner applications");
       })
       .finally(() => setLoading(false));
   };
@@ -268,9 +268,9 @@ export default function AffiliateApplications() {
     <AdminLayout>
       <div className="space-y-6">
         <PageHeader
-          title="Affiliate Application Pipeline"
+          title="Partner Application Pipeline"
           subtitle="Review candidate applications, inspect audience size metrics, and approve commission tiers."
-          breadcrumbs={[{ label: "Affiliate Applications" }]}
+          breadcrumbs={[{ label: "Partner Applications" }]}
           showExportButtons
           rightSlot={
             <div className="flex items-center gap-2">

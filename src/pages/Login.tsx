@@ -137,7 +137,7 @@ export default function Login() {
               Manage Onemai Financial Ecosystem with Ease.
             </h1>
             <p className="text-white/80 text-base leading-relaxed">
-              Real-time user analytics, group contribution tracking, monify payouts, affiliate approvals, and comprehensive financial reports.
+              Real-time user analytics, group contribution tracking, monify payouts, partner approvals, and comprehensive financial reports.
             </p>
           </div>
 

@@ -177,7 +177,7 @@ export default function AffiliateApplicationDetail() {
           try {
             const j = await res.json();
             if (j?.message) msg = j.message;
-          } catch {}
+          } catch { }
           throw new Error(msg);
         }
         return res.json();
@@ -260,10 +260,10 @@ export default function AffiliateApplicationDetail() {
       <AdminLayout>
         <div className="space-y-6">
           <PageHeader
-            title="Affiliate Application"
+            title="Partner Application"
             breadcrumbs={[
               { label: "Dashboard", href: "/dashboard" },
-              { label: "Affiliate Applications", href: "/affiliate-applications" },
+              { label: "Partner Applications", href: "/affiliate-applications" },
               { label: "Application" },
             ]}
             rightSlot={
@@ -293,7 +293,7 @@ export default function AffiliateApplicationDetail() {
           title={nameOf(u)}
           breadcrumbs={[
             { label: "Dashboard", href: "/dashboard" },
-            { label: "Affiliate Applications", href: "/affiliate-applications" },
+            { label: "Partner Applications", href: "/affiliate-applications" },
             { label: nameOf(u) },
           ]}
           rightSlot={

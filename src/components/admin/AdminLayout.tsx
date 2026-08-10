@@ -96,7 +96,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const [notifications, setNotifications] = useState([
     {
       id: 1,
-      title: "New Affiliate Application",
+      title: "New Partner Application",
       time: "10 mins ago",
       read: false,
       link: "/affiliate-applications",

@@ -187,10 +187,10 @@ export function AffiliateInspectionModal({ open, onOpenChange, affiliate }: Affi
       if (refRes.ok) {
         setReferrals(unwrapArray(refBody, ["referrals", "users", "data"]).map(normalizeReferral));
       } else {
-        setReferralsError(refBody?.message || "Failed to load affiliate referrals.");
+        setReferralsError(refBody?.message || "Failed to load partner referrals.");
       }
     } catch (error: any) {
-      setReferralsError(error?.message || "Failed to load affiliate referrals.");
+      setReferralsError(error?.message || "Failed to load partner referrals.");
     } finally {
       setReferralsLoading(false);
     }
@@ -289,7 +289,7 @@ export function AffiliateInspectionModal({ open, onOpenChange, affiliate }: Affi
             <Avatar className="h-10 w-10 ring-2 ring-brand/10">
               <AvatarImage src={affiliate?.image} alt={affiliate?.name} />
               <AvatarFallback className="bg-brand text-white font-bold text-xs">
-                {initials(affiliate?.name || "Affiliate")}
+                {initials(affiliate?.name || "Partner")}
               </AvatarFallback>
             </Avatar>
             <div>
@@ -369,7 +369,7 @@ export function AffiliateInspectionModal({ open, onOpenChange, affiliate }: Affi
               <Card className="border border-dashed border-border/80 shadow-none rounded-2xl p-6 text-center bg-card">
                 <div className="flex flex-col items-center gap-2 text-xs text-muted-foreground">
                   <MessageSquarePlus className="h-8 w-8 text-muted-foreground/40" />
-                  <span>No internal admin remarks saved for this affiliate partner yet.</span>
+                  <span>No internal admin remarks saved for this partner yet.</span>
                 </div>
               </Card>
             ) : (
