@@ -30,42 +30,13 @@ type UsersResponse = {
   totalUsers: number;
 };
 
-type UserRole = "admin" | "account" | "frontDesk" | "customerSupport";
+type UserRole = "admin" | "account" | "front_desk" | "customer_support";
 
-import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import { API_BASE_URL } from "@/lib/constants";
+import { useAuth } from "@/contexts/AuthContext";
 
 const USERS_URL = `${API_BASE_URL}/admin/users`;
-
-function useAuthToken() {
-  return useMemo(() => {
-    const raw =
-      localStorage.getItem(AUTH_STORAGE_KEY) ||
-      sessionStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) return null;
-    try {
-      const parsed = JSON.parse(raw);
-      return parsed?.token as string | null;
-    } catch {
-      return null;
-    }
-  }, []);
-}
-
-function useUserRole(): UserRole | null {
-  return useMemo(() => {
-    const raw =
-      localStorage.getItem(AUTH_STORAGE_KEY) ||
-      sessionStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) return null;
-    try {
-      const parsed = JSON.parse(raw);
-      return parsed?.role as UserRole | null;
-    } catch {
-      return null;
-    }
-  }, []);
-}
 
 function nameOf(u: User) {
   return `${(u.firstName || "").trim()} ${(u.lastName || "").trim()}`.trim() || "—";
@@ -81,8 +52,7 @@ export default function Users() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const token = useAuthToken();
-  const userRole = useUserRole();
+  const { token } = useAuth();
 
   const initialPage = parseInt(searchParams.get("page") || "1", 10);
   const [page, setPage] = useState(initialPage);
@@ -94,12 +64,6 @@ export default function Users() {
   const [loading, setLoading] = useState<boolean>(false);
   const [err, setErr] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-
-  const hasFullAccess = userRole === "admin" || userRole === "account";
-  const hasLimitedView = userRole === "frontDesk";
-  const hasReadOnly = userRole === "customerSupport";
-  const canViewDetails = hasFullAccess || hasLimitedView || hasReadOnly;
-  const canSuspendUsers = hasFullAccess;
 
   useEffect(() => {
     const p = parseInt(searchParams.get("page") || "1", 10);
@@ -199,7 +163,7 @@ export default function Users() {
   };
 
   const columns = useMemo(() => {
-    const baseColumns = [
+    return [
       {
         key: "name",
         label: "User Information",
@@ -214,43 +178,19 @@ export default function Users() {
                 </AvatarFallback>
               </Avatar>
               <div className="flex flex-col">
-                {canViewDetails ? (
-                  <Link
-                    to={`/users/${row._id}`}
-                    state={{ from: location }}
-                    className="font-semibold text-foreground hover:text-brand transition-colors text-sm"
-                  >
-                    {name}
-                  </Link>
-                ) : (
-                  <span className="font-semibold text-foreground text-sm">{name}</span>
-                )}
+                <Link
+                  to={`/users/${row._id}`}
+                  state={{ from: location }}
+                  className="font-semibold text-foreground hover:text-brand transition-colors text-sm"
+                >
+                  {name}
+                </Link>
                 <span className="text-xs text-muted-foreground">{row.email}</span>
               </div>
             </div>
           );
         },
       },
-    ];
-
-    if (hasLimitedView) {
-      return [
-        ...baseColumns,
-        {
-          key: "phoneNumber",
-          label: "Phone",
-          render: (v: string) => <span className="text-xs text-muted-foreground">{v || "—"}</span>,
-        },
-        {
-          key: "accountStatus",
-          label: "Status",
-          render: (value: string) => <StatusBadge status={value || "active"} />,
-        },
-      ];
-    }
-
-    return [
-      ...baseColumns,
       {
         key: "phoneNumber",
         label: "Phone",
@@ -285,7 +225,7 @@ export default function Users() {
           ),
       },
     ];
-  }, [hasLimitedView, canViewDetails, location]);
+  }, [location]);
 
   const rows = allUsers.map((u) => ({
     ...u,
@@ -294,21 +234,17 @@ export default function Users() {
   }));
 
   const actionItems = useMemo(() => {
-    const actions = [];
-    if (canViewDetails) {
-      actions.push({
+    return [
+      {
         label: "View Profile & Activity",
         onClick: (row: User) => navigate(`/users/${row._id}`, { state: { from: location } }),
-      });
-    }
-    if (canSuspendUsers) {
-      actions.push({
+      },
+      {
         label: "Toggle Account Status",
         onClick: (row: User) => console.log("Suspend user", row._id),
-      });
-    }
-    return actions;
-  }, [canViewDetails, canSuspendUsers, navigate, location]);
+      },
+    ];
+  }, [navigate, location]);
 
   const totalUsers = data?.totalUsers ?? 0;
   const totalPages = data?.totalPages ?? 1;

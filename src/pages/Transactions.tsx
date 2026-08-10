@@ -15,8 +15,9 @@ import {
 } from "@/components/ui/dialog";
 import { ShieldAlert, ArrowRight, ArrowUpRight, ArrowDownLeft } from "lucide-react";
 
-import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import { API_BASE_URL } from "@/lib/constants";
+import { useAuth } from "@/contexts/AuthContext";
 
 type Transaction = {
   _id: string;
@@ -53,30 +54,7 @@ type UserRole = "admin" | "account" | "front_desk" | "customer_support";
 const BASE = API_BASE_URL;
 const URL_TXNS = `${BASE}/transaction/all`;
 
-function useToken() {
-  return useMemo(() => {
-    const raw = localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) return null;
-    try {
-      return JSON.parse(raw)?.token as string | null;
-    } catch {
-      return null;
-    }
-  }, []);
-}
 
-function useUserRole(): UserRole | null {
-  return useMemo(() => {
-    const raw = localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) return null;
-    try {
-      const parsed = JSON.parse(raw);
-      return (parsed?.role as UserRole) || null;
-    } catch {
-      return null;
-    }
-  }, []);
-}
 
 function ngn(n: number) {
   try {
@@ -116,8 +94,7 @@ function getRoute(row: Transaction): {
 }
 
 export default function Transactions() {
-  const token = useToken();
-  const role = useUserRole();
+  const { token } = useAuth();
   const navigate = useNavigate();
 
   const [page, setPage] = useState(1);
@@ -129,17 +106,9 @@ export default function Transactions() {
   const [err, setErr] = useState<string | null>(null);
   const [selectedTxn, setSelectedTxn] = useState<Transaction | null>(null);
 
-  const canView = role === "admin" || role === "account" || role === "customer_support";
-  const isViewOnly = role === "customer_support";
-
   useEffect(() => {
     if (!token) {
       navigate("/login", { replace: true, state: { from: "/transactions" } });
-      return;
-    }
-
-    if (!canView) {
-      setErr("You don't have permission to view transactions.");
       return;
     }
 
@@ -173,34 +142,7 @@ export default function Transactions() {
       .finally(() => setLoading(false));
 
     return () => ctl.abort();
-  }, [token, page, status, type, navigate, canView]);
-
-  if (!canView) {
-    return (
-      <AdminLayout>
-        <div className="space-y-6">
-          <PageHeader
-            title="Transactions Audit"
-            breadcrumbs={[{ label: "Transactions" }]}
-          />
-          <Card className="max-w-xl border border-border/80 shadow-sm rounded-2xl bg-card p-6">
-            <div className="flex flex-col items-center justify-center text-center space-y-3">
-              <div className="rounded-full bg-rose-100 dark:bg-rose-950/40 p-3 text-rose-600">
-                <ShieldAlert className="h-8 w-8" />
-              </div>
-              <h3 className="text-base font-bold text-foreground">Access Restricted</h3>
-              <p className="text-xs text-muted-foreground max-w-sm">
-                You do not have administrative permission to view transaction ledgers.
-              </p>
-              <Button onClick={() => navigate("/dashboard")} variant="outline" className="rounded-xl text-xs">
-                Back to Dashboard
-              </Button>
-            </div>
-          </Card>
-        </div>
-      </AdminLayout>
-    );
-  }
+  }, [token, page, status, type, navigate]);
 
   const rows = data?.transactions ?? [];
   const totalPages = data?.totalPages ?? 1;

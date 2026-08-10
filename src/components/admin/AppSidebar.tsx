@@ -31,20 +31,9 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useAuth } from "@/contexts/AuthContext";
 
 const AUTH_STORAGE_KEY = "admin_auth";
-
-function getUserSession() {
-  const raw =
-    localStorage.getItem(AUTH_STORAGE_KEY) ||
-    sessionStorage.getItem(AUTH_STORAGE_KEY);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
 
 const mainItems = [
   {
@@ -156,42 +145,27 @@ export function AppSidebar({ className, isMobileOpen, onMobileClose }: AppSideba
   const [isCollapsed, setIsCollapsed] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const session = useMemo(() => getUserSession(), []);
+  const { role, user, logout } = useAuth();
 
-  const rawRole = session?.role || session?.user?.role || "Admin";
+  const rawRole = role || "admin";
   const userRole =
     rawRole.charAt(0).toUpperCase() + rawRole.slice(1).toLowerCase();
 
   const displayName =
-    session?.user?.name || session?.user?.email?.split("@")[0] || "Admin";
+    user?.name || user?.email?.split("@")[0] || "Admin";
 
   const reportsActive = location.pathname.startsWith("/reports");
   const [reportsOpen, setReportsOpen] = useState(reportsActive);
 
   const handleLogout = () => {
-    localStorage.removeItem(AUTH_STORAGE_KEY);
-    sessionStorage.removeItem(AUTH_STORAGE_KEY);
+    logout();
     if (onMobileClose) onMobileClose();
     navigate("/", { replace: true });
   };
 
-  const filteredMainItems = mainItems.filter(
-    (item) =>
-      item.roles.map((r) => r.toLowerCase()).includes(rawRole.toLowerCase()) ||
-      rawRole.toLowerCase() === "admin"
-  );
-
-  const filteredReportsItems = reportsItems.filter(
-    (item) =>
-      item.roles.map((r) => r.toLowerCase()).includes(rawRole.toLowerCase()) ||
-      rawRole.toLowerCase() === "admin"
-  );
-
-  const filteredSupportItems = supportItems.filter(
-    (item) =>
-      item.roles.map((r) => r.toLowerCase()).includes(rawRole.toLowerCase()) ||
-      rawRole.toLowerCase() === "admin"
-  );
+  const filteredMainItems = mainItems;
+  const filteredReportsItems = reportsItems;
+  const filteredSupportItems = supportItems;
 
   const handleNavClick = () => {
     if (onMobileClose) {

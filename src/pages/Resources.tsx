@@ -9,8 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar, X, Plus, Loader2, Upload, Trash2, Eye, FileText, Download } from "lucide-react";
 
-import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import { API_BASE_URL } from "@/lib/constants";
+import { useAuth } from "@/contexts/AuthContext";
 
 type Resource = {
   _id: string;
@@ -44,34 +45,8 @@ const ADD_RESOURCE_URL = `${BASE}/resource`;
 const DELETE_RESOURCE_URL = `${BASE}/resource`;
 const UPDATE_RESOURCE_URL = `${BASE}/resource`;
 
-function useToken() {
-  return useMemo(() => {
-    const raw = localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) return null;
-    try {
-      return JSON.parse(raw)?.token as string | null;
-    } catch {
-      return null;
-    }
-  }, []);
-}
-
-function useUserRole(): UserRole | null {
-  return useMemo(() => {
-    const raw = localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) return null;
-    try {
-      const parsed = JSON.parse(raw);
-      return (parsed?.role as UserRole) || null;
-    } catch {
-      return null;
-    }
-  }, []);
-}
-
 export default function Resources() {
-  const token = useToken();
-  const role = useUserRole();
+  const { token } = useAuth();
   const navigate = useNavigate();
 
   const [data, setData] = useState<ResourcesResponse | null>(null);
@@ -96,22 +71,14 @@ export default function Resources() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const canView = role === "admin" || role === "account" || role === "customer_support" || role === "front_desk";
-  const canManage = role === "admin" || role === "account";
-
   useEffect(() => {
     if (!token) {
       navigate("/login", { replace: true, state: { from: "/resources" } });
       return;
     }
 
-    if (!canView) {
-      setErr("You don't have permission to view resources.");
-      return;
-    }
-
     fetchResources();
-  }, [token, canView, navigate]);
+  }, [token, navigate]);
 
   const fetchResources = () => {
     const ctl = new AbortController();
@@ -170,11 +137,6 @@ export default function Resources() {
       return;
     }
 
-    if (!canManage) {
-      setFormError("You don't have permission to add resources.");
-      return;
-    }
-
     setSubmitting(true);
     setFormError(null);
 
@@ -223,7 +185,6 @@ export default function Resources() {
   };
 
   const handleDeleteResource = async (resourceId: string) => {
-    if (!canManage) return;
     if (!confirm("Are you sure you want to delete this resource?")) return;
 
     try {
@@ -332,14 +293,12 @@ export default function Resources() {
                 </SelectContent>
               </Select>
 
-              {canManage && (
-                <Button
-                  onClick={() => setShowAddModal(true)}
-                  className="h-9 gap-1.5 rounded-xl bg-brand hover:bg-brand-hover text-white text-xs font-semibold shadow-md transition-all duration-200"
-                >
-                  <Plus className="h-4 w-4" /> Add Asset
-                </Button>
-              )}
+              <Button
+                onClick={() => setShowAddModal(true)}
+                className="h-9 gap-1.5 rounded-xl bg-brand hover:bg-brand-hover text-white text-xs font-semibold shadow-md transition-all duration-200"
+              >
+                <Plus className="h-4 w-4" /> Add Asset
+              </Button>
             </div>
           }
         />
@@ -355,14 +314,10 @@ export default function Resources() {
           data={filteredResources}
           actionItems={[
             { label: "Inspect Resource", onClick: (row: Resource) => handleViewResource(row) },
-            ...(canManage
-              ? [
-                  {
-                    label: "Delete Resource",
-                    onClick: (row: Resource) => handleDeleteResource(row._id),
-                  },
-                ]
-              : []),
+            {
+              label: "Delete Resource",
+              onClick: (row: Resource) => handleDeleteResource(row._id),
+            },
           ]}
           loading={loading}
           totalEntries={filteredResources.length}

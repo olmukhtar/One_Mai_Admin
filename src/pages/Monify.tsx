@@ -17,8 +17,9 @@ import {
 import { ShieldAlert, RefreshCw, AlertCircle, CheckCircle2, Loader2, Send, Wallet } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/constants";
+import { useAuth } from "@/contexts/AuthContext";
 
 type User = {
   _id: string;
@@ -68,30 +69,7 @@ type APIResponse = {
 
 type UserRole = "admin" | "account" | "front_desk" | "customer_support";
 
-function useToken() {
-  return useMemo(() => {
-    const raw = localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) return null;
-    try {
-      return JSON.parse(raw)?.token as string | null;
-    } catch {
-      return null;
-    }
-  }, []);
-}
 
-function useUserRole(): UserRole | null {
-  return useMemo(() => {
-    const raw = localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) return null;
-    try {
-      const parsed = JSON.parse(raw);
-      return (parsed?.role as UserRole) || null;
-    } catch {
-      return null;
-    }
-  }, []);
-}
 
 function formatAmount(amount: number, currency: string = "NGN") {
   try {
@@ -112,8 +90,7 @@ function userLabel(row: Transaction) {
 }
 
 export default function Monify() {
-  const token = useToken();
-  const role = useUserRole();
+  const { token } = useAuth();
   const navigate = useNavigate();
 
   const [page, setPage] = useState(1);
@@ -133,10 +110,9 @@ export default function Monify() {
   const [initiatingBulk, setInitiatingBulk] = useState(false);
 
   const limit = 20;
-  const canView = role === "admin" || role === "account";
 
   const fetchTransactions = () => {
-    if (!token || !canView) return;
+    if (!token) return;
 
     setLoading(true);
     setErr(null);
@@ -174,38 +150,8 @@ export default function Monify() {
       return;
     }
 
-    if (!canView) {
-      setErr("You don't have permission to view Monify payout transactions.");
-      return;
-    }
-
     fetchTransactions();
-  }, [token, page, status, navigate, canView]);
-
-  if (!canView) {
-    return (
-      <AdminLayout>
-        <div className="space-y-6">
-          <PageHeader
-            title="Monify Payout Operations"
-            breadcrumbs={[{ label: "Monify Payouts" }]}
-          />
-          <Card className="max-w-xl border border-border shadow-sm rounded-2xl p-6 bg-card">
-            <div className="flex flex-col items-center justify-center text-center space-y-3">
-              <ShieldAlert className="h-8 w-8 text-rose-600" />
-              <h3 className="text-base font-bold text-foreground">Access Restricted</h3>
-              <p className="text-xs text-muted-foreground">
-                Monify Payout operations are restricted to Admin and Account managers.
-              </p>
-              <Button onClick={() => navigate("/dashboard")} variant="outline" className="rounded-xl text-xs">
-                Back to Dashboard
-              </Button>
-            </div>
-          </Card>
-        </div>
-      </AdminLayout>
-    );
-  }
+  }, [token, page, status, navigate]);
 
   const rows = data?.data?.transactions ?? [];
   const total = data?.data?.total ?? 0;

@@ -24,8 +24,9 @@ import {
 } from "@/components/ui/dialog";
 import { Eye, EyeOff, ShieldAlert, Pencil, Trash2, Plus, Loader2, UserPlus, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import { API_BASE_URL } from "@/lib/constants";
+import { useAuth } from "@/contexts/AuthContext";
 
 type UserRole = "admin" | "account" | "front_desk" | "customer_support" | "marketing";
 
@@ -51,34 +52,8 @@ interface Role {
   value: string;
 }
 
-function useToken() {
-  return useMemo(() => {
-    const raw = localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) return null;
-    try {
-      return JSON.parse(raw)?.token as string | null;
-    } catch {
-      return null;
-    }
-  }, []);
-}
-
-function useUserRole(): UserRole | null {
-  return useMemo(() => {
-    const raw = localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) return null;
-    try {
-      const parsed = JSON.parse(raw);
-      return (parsed?.role as UserRole) || null;
-    } catch {
-      return null;
-    }
-  }, []);
-}
-
 export default function CreateAdmin() {
-  const token = useToken();
-  const currentUserRole = useUserRole();
+  const { token, role: currentUserRole } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -104,8 +79,6 @@ export default function CreateAdmin() {
   const [editRole, setEditRole] = useState("");
   const [updating, setUpdating] = useState(false);
 
-  const hasAccess = currentUserRole === "admin";
-
   useEffect(() => {
     if (!token) {
       navigate("/login", { replace: true, state: { from: "/create-admin" } });
@@ -113,7 +86,7 @@ export default function CreateAdmin() {
   }, [token, navigate]);
 
   useEffect(() => {
-    if (!token || !hasAccess) {
+    if (!token) {
       setLoadingRoles(false);
       setLoadingAdmins(false);
       return;
@@ -152,7 +125,7 @@ export default function CreateAdmin() {
     }
 
     fetchData();
-  }, [token, hasAccess]);
+  }, [token]);
 
   async function refreshAdmins() {
     try {
@@ -179,7 +152,6 @@ export default function CreateAdmin() {
 
   async function onCreate(e: React.FormEvent) {
     e.preventDefault();
-    if (!hasAccess) return;
 
     const v = validateCreate();
     if (v) {
@@ -294,30 +266,7 @@ export default function CreateAdmin() {
     }
   }
 
-  if (!hasAccess) {
-    return (
-      <AdminLayout>
-        <div className="space-y-6">
-          <PageHeader
-            title="Admin Management"
-            breadcrumbs={[{ label: "Admin Management" }]}
-          />
-          <Card className="max-w-xl border border-border shadow-sm rounded-2xl p-6 bg-card">
-            <div className="flex flex-col items-center justify-center text-center space-y-3">
-              <ShieldAlert className="h-8 w-8 text-rose-600" />
-              <h3 className="text-base font-bold text-foreground">Access Restricted</h3>
-              <p className="text-xs text-muted-foreground">
-                Provisioning administrative roles is restricted exclusively to System Super Admins.
-              </p>
-              <Button onClick={() => navigate("/dashboard")} variant="outline" className="rounded-xl text-xs">
-                Back to Dashboard
-              </Button>
-            </div>
-          </Card>
-        </div>
-      </AdminLayout>
-    );
-  }
+
 
   const columns = [
     {

@@ -9,9 +9,11 @@ import { Mail, Lock, Eye, EyeOff, Shield, ArrowRight, Loader2 } from "lucide-rea
 
 import { AUTH_STORAGE_KEY } from "@/lib/api";
 import { API_BASE_URL } from "@/lib/constants";
+import { useAuth } from "@/contexts/AuthContext";
 const LOGIN_URL = `${API_BASE_URL}/admin/auth/login`;
 
 export default function Login() {
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [pwd, setPwd] = useState("");
   const [showPwd, setShowPwd] = useState(false);
@@ -30,12 +32,12 @@ export default function Login() {
     }
   }, [location.search]);
 
-  useEffect(() => {
-    const raw =
-      localStorage.getItem(AUTH_STORAGE_KEY) ||
-      sessionStorage.getItem(AUTH_STORAGE_KEY);
-    if (raw) navigate("/dashboard", { replace: true });
-  }, [navigate]);
+  // useEffect(() => {
+  //   const raw =
+  //     localStorage.getItem(AUTH_STORAGE_KEY) ||
+  //     sessionStorage.getItem(AUTH_STORAGE_KEY);
+  //   if (raw) navigate("/dashboard", { replace: true });
+  // }, [navigate]);
 
   const storage = useMemo(
     () => (remember ? localStorage : sessionStorage),
@@ -66,7 +68,7 @@ export default function Login() {
           const json = await res.json();
           if (json?.message) msg = `Login failed: ${json.message}`;
           else if (json?.error) msg = `Login failed: ${json.error}`;
-        } catch {}
+        } catch { }
         setError(msg);
         setLoading(false);
         return;
@@ -77,7 +79,7 @@ export default function Login() {
 
       const token =
         data?.token || data?.accessToken || data?.access_token || "";
-      const admin = data?.admin || data?.user || { email };
+      const admin = data?.admin;
 
       if (!token) {
         setError("Login succeeded but no token returned by server.");
@@ -85,23 +87,16 @@ export default function Login() {
         return;
       }
 
-      storage.setItem(
-        AUTH_STORAGE_KEY,
-        JSON.stringify({
-          token,
-          role: admin?.role || "admin",
-          user: {
-            id: admin?.id || admin?._id,
-            name:
-              admin?.name ||
-              `${admin?.firstName ?? ""} ${admin?.lastName ?? ""}`.trim() ||
-              admin?.email ||
-              email,
-            email: admin?.email || email,
-            role: admin?.role || "admin",
-          },
-        })
-      );
+      login({
+        token,
+        role: admin?.role,
+        user: {
+          id: admin?.id,
+          name: admin?.name,
+          email: admin?.email,
+          role: admin?.role
+        },
+      }, remember);
 
       const params = new URLSearchParams(location.search);
       const fromParam = params.get("from");
@@ -124,7 +119,7 @@ export default function Login() {
       <div className="hidden lg:flex w-1/2 relative bg-gradient-to-br from-[#1766a4] to-[#207EC4] items-center justify-center p-12 overflow-hidden">
         {/* Decorative Grid Lines */}
         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" />
-        
+
         {/* Glow Spheres */}
         <div className="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-white/10 blur-3xl" />
         <div className="absolute -bottom-24 -right-24 h-96 w-96 rounded-full bg-black/20 blur-3xl" />

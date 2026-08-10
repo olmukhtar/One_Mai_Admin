@@ -10,8 +10,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ShieldAlert, RefreshCw, AlertCircle, CheckCircle2, ClipboardCheck } from "lucide-react";
 
-import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import { API_BASE_URL } from "@/lib/constants";
+import { useAuth } from "@/contexts/AuthContext";
 import { AffiliateInspectionModal } from "@/components/admin/AffiliateInspectionModal";
 
 type Socials = {
@@ -91,30 +92,7 @@ const CHANNEL_LABELS: Record<string, string> = {
   other: "Other",
 };
 
-function useToken() {
-  return useMemo(() => {
-    const raw = localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) return null;
-    try {
-      return JSON.parse(raw)?.token as string | null;
-    } catch {
-      return null;
-    }
-  }, []);
-}
 
-function useUserRole(): UserRole | null {
-  return useMemo(() => {
-    const raw = localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) return null;
-    try {
-      const parsed = JSON.parse(raw);
-      return (parsed?.role as UserRole) || null;
-    } catch {
-      return null;
-    }
-  }, []);
-}
 
 function nameOf(u?: ApplicationUser) {
   if (!u) return "—";
@@ -135,11 +113,8 @@ function humanizeStatus(status: string) {
 }
 
 export default function AffiliateApplications() {
-  const token = useToken();
-  const role = useUserRole();
+  const { token } = useAuth();
   const navigate = useNavigate();
-
-  const canView = role === "admin" || role === "account";
 
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<"all" | ApplicationStatus>("all");
@@ -158,7 +133,7 @@ export default function AffiliateApplications() {
   } | null>(null);
 
   const fetchApplications = () => {
-    if (!token || !canView) return;
+    if (!token) return;
 
     setLoading(true);
     setErr(null);
@@ -194,37 +169,8 @@ export default function AffiliateApplications() {
       navigate("/login", { replace: true, state: { from: "/affiliate-applications" } });
       return;
     }
-    if (!canView) {
-      setErr("You don't have permission to view affiliate applications.");
-      return;
-    }
     fetchApplications();
-  }, [token, page, statusFilter, canView]);
-
-  if (!canView) {
-    return (
-      <AdminLayout>
-        <div className="space-y-6">
-          <PageHeader
-            title="Affiliate Applications"
-            breadcrumbs={[{ label: "Affiliate Applications" }]}
-          />
-          <Card className="max-w-xl border border-border shadow-sm rounded-2xl p-6 bg-card">
-            <div className="flex flex-col items-center justify-center text-center space-y-3">
-              <ShieldAlert className="h-8 w-8 text-rose-600" />
-              <h3 className="text-base font-bold text-foreground">Access Restricted</h3>
-              <p className="text-xs text-muted-foreground">
-                Affiliate application reviews are restricted to Admin and Account managers.
-              </p>
-              <Button onClick={() => navigate("/dashboard")} variant="outline" className="rounded-xl text-xs">
-                Back to Dashboard
-              </Button>
-            </div>
-          </Card>
-        </div>
-      </AdminLayout>
-    );
-  }
+  }, [token, page, statusFilter]);
 
   const hasMore = rows.length >= LIMIT;
   const totalPages = hasMore ? page + 1 : page;

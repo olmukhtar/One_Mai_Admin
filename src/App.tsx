@@ -39,28 +39,19 @@ import KnowledgeBase from "./pages/KnowledgeBase";
 import CreateBlog from "./pages/CreateBlog";
 import EditBlog from "./pages/EditBlog";
 import Monify from "./pages/Monify";
+import Unauthorized from "./pages/Unauthorized";
+
+import { useAuth } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
-const AUTH_STORAGE_KEY = "admin_auth";
 const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
-
-function isAuthed() {
-  return (
-    !!localStorage.getItem(AUTH_STORAGE_KEY) ||
-    !!sessionStorage.getItem(AUTH_STORAGE_KEY)
-  );
-}
-
-function logout() {
-  localStorage.removeItem(AUTH_STORAGE_KEY);
-  sessionStorage.removeItem(AUTH_STORAGE_KEY);
-}
 
 // Hook to handle inactivity logout
 function useInactivityLogout() {
   const navigate = useNavigate();
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const location = useLocation();
+  const { isAuthenticated, logout } = useAuth();
 
   const resetTimer = () => {
     // Clear existing timeout
@@ -69,7 +60,7 @@ function useInactivityLogout() {
     }
 
     // Only set timeout if user is authenticated and not on login page
-    if (isAuthed() && location.pathname !== "/") {
+    if (isAuthenticated && location.pathname !== "/") {
       timeoutRef.current = setTimeout(() => {
         logout();
         navigate("/", { replace: true });
@@ -98,7 +89,7 @@ function useInactivityLogout() {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [location.pathname]);
+  }, [location.pathname, isAuthenticated]);
 }
 
 function InactivityMonitor({ children }: { children: React.ReactNode }) {
@@ -106,16 +97,23 @@ function InactivityMonitor({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function RequireAuth({ children }: { children: JSX.Element }) {
+function RequireAuth({ children, allowedRoles }: { children: JSX.Element; allowedRoles?: string[] }) {
   const location = useLocation();
-  if (!isAuthed()) {
+  const { isAuthenticated, role } = useAuth();
+  if (!isAuthenticated) {
     return <Navigate to="/" replace state={{ from: location.pathname }} />;
+  }
+  if (allowedRoles && (!role || !allowedRoles.includes(role))) {
+    return <Navigate to="/unauthorized" replace />;
   }
   return children;
 }
 
+
+
 function RootLogin() {
-  return isAuthed() ? <Navigate to="/dashboard" replace /> : <Login />;
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />;
 }
 
 const App = () => (
@@ -134,7 +132,7 @@ const App = () => (
             <Route
               path="/dashboard"
               element={
-                <RequireAuth>
+                <RequireAuth allowedRoles={["admin", "front_desk", "customer_support", "account", "marketing", "affiliate"]}>
                   <Dashboard />
                 </RequireAuth>
               }
@@ -142,7 +140,7 @@ const App = () => (
             <Route
               path="/users"
               element={
-                <RequireAuth>
+                <RequireAuth allowedRoles={["admin"]}>
                   <Users />
                 </RequireAuth>
               }
@@ -150,7 +148,7 @@ const App = () => (
             <Route
               path="/users/:id"
               element={
-                <RequireAuth>
+                <RequireAuth allowedRoles={["admin"]}>
                   <UserDetails />
                 </RequireAuth>
               }
@@ -158,7 +156,7 @@ const App = () => (
             <Route
               path="/profile"
               element={
-                <RequireAuth>
+                <RequireAuth allowedRoles={["admin", "front_desk", "customer_support", "account", "marketing", "affiliate"]}>
                   <Profile />
                 </RequireAuth>
               }
@@ -166,7 +164,7 @@ const App = () => (
             <Route
               path="/settings"
               element={
-                <RequireAuth>
+                <RequireAuth allowedRoles={["admin"]}>
                   <Settings />
                 </RequireAuth>
               }
@@ -174,7 +172,7 @@ const App = () => (
             <Route
               path="/notifications"
               element={
-                <RequireAuth>
+                <RequireAuth allowedRoles={["admin", "front_desk", "customer_support", "account", "marketing"]}>
                   <Notifications />
                 </RequireAuth>
               }
@@ -182,7 +180,7 @@ const App = () => (
             <Route
               path="/affiliate-applications"
               element={
-                <RequireAuth>
+                <RequireAuth allowedRoles={["admin", "affiliate"]}>
                   <AffiliateApplications />
                 </RequireAuth>
               }
@@ -190,7 +188,7 @@ const App = () => (
             <Route
               path="/affiliate-applications/:id"
               element={
-                <RequireAuth>
+                <RequireAuth allowedRoles={["admin"]}>
                   <AffiliateApplicationDetail />
                 </RequireAuth>
               }
@@ -198,7 +196,7 @@ const App = () => (
             <Route
               path="/groups"
               element={
-                <RequireAuth>
+                <RequireAuth allowedRoles={["admin"]}>
                   <Groups />
                 </RequireAuth>
               }
@@ -206,7 +204,7 @@ const App = () => (
             <Route
               path="/groups/:id"
               element={
-                <RequireAuth>
+                <RequireAuth allowedRoles={["admin"]}>
                   <GroupDetails />
                 </RequireAuth>
               }
@@ -214,7 +212,7 @@ const App = () => (
             <Route
               path="/circle-management"
               element={
-                <RequireAuth>
+                <RequireAuth allowedRoles={["admin"]}>
                   <CircleManagement />
                 </RequireAuth>
               }
@@ -222,7 +220,7 @@ const App = () => (
             <Route
               path="/transactions"
               element={
-                <RequireAuth>
+                <RequireAuth allowedRoles={["admin"]}>
                   <Transactions />
                 </RequireAuth>
               }
@@ -230,7 +228,7 @@ const App = () => (
             <Route
               path="/monify"
               element={
-                <RequireAuth>
+                <RequireAuth allowedRoles={["admin"]}>
                   <Monify />
                 </RequireAuth>
               }
@@ -238,7 +236,7 @@ const App = () => (
             <Route
               path="/resources"
               element={
-                <RequireAuth>
+                <RequireAuth allowedRoles={["admin", "marketing"]}>
                   <Resources />
                 </RequireAuth>
               }
@@ -246,7 +244,7 @@ const App = () => (
             <Route
               path="/blog"
               element={
-                <RequireAuth>
+                <RequireAuth allowedRoles={["admin", "marketing"]}>
                   <BlogManagement />
                 </RequireAuth>
               }
@@ -254,7 +252,7 @@ const App = () => (
             <Route
               path="/blog/create"
               element={
-                <RequireAuth>
+                <RequireAuth allowedRoles={["admin", "marketing"]}>
                   <CreateBlog />
                 </RequireAuth>
               }
@@ -262,7 +260,7 @@ const App = () => (
             <Route
               path="/blog/edit/:id"
               element={
-                <RequireAuth>
+                <RequireAuth allowedRoles={["admin", "marketing"]}>
                   <EditBlog />
                 </RequireAuth>
               }
@@ -270,7 +268,7 @@ const App = () => (
             <Route
               path="/reports/group-contributions"
               element={
-                <RequireAuth>
+                <RequireAuth allowedRoles={["admin", "front_desk", "customer_support"]}>
                   <GroupContributions />
                 </RequireAuth>
               }
@@ -278,7 +276,7 @@ const App = () => (
             <Route
               path="/create-admin"
               element={
-                <RequireAuth>
+                <RequireAuth allowedRoles={["admin"]}>
                   <CreateAdmin />
                 </RequireAuth>
               }
@@ -286,7 +284,7 @@ const App = () => (
             <Route
               path="/reports/withdrawals"
               element={
-                <RequireAuth>
+                <RequireAuth allowedRoles={["admin"]}>
                   <Withdrawals />
                 </RequireAuth>
               }
@@ -294,7 +292,7 @@ const App = () => (
             <Route
               path="/reports/members-activity"
               element={
-                <RequireAuth>
+                <RequireAuth allowedRoles={["admin"]}>
                   <MembersActivity />
                 </RequireAuth>
               }
@@ -302,7 +300,7 @@ const App = () => (
             <Route
               path="/reports/circle-progress"
               element={
-                <RequireAuth>
+                <RequireAuth allowedRoles={["admin"]}>
                   <CircleProgress />
                 </RequireAuth>
               }
@@ -310,7 +308,7 @@ const App = () => (
             <Route
               path="/support"
               element={
-                <RequireAuth>
+                <RequireAuth allowedRoles={["admin", "front_desk", "customer_support"]}>
                   <Support />
                 </RequireAuth>
               }
@@ -318,11 +316,13 @@ const App = () => (
             <Route
               path="/knowledge-base"
               element={
-                <RequireAuth>
+                <RequireAuth allowedRoles={["admin", "marketing"]}>
                   <KnowledgeBase />
                 </RequireAuth>
               }
             />
+
+            <Route path="/unauthorized" element={<Unauthorized />} />
 
             {/* Catch-all */}
             <Route path="*" element={<NotFound />} />

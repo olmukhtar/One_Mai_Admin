@@ -9,8 +9,9 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { DataTable } from "@/components/admin/DataTable";
 import { useToast } from "@/hooks/use-toast";
-import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import { API_BASE_URL } from "@/lib/constants";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   UsersRound,
   MessageSquare,
@@ -58,42 +59,7 @@ const AFFILIATE_REMARKS_URL = (userId: string) =>
   `${API_BASE_URL}/admin/affiliate/remark/${userId}`;
 const ADD_AFFILIATE_REMARK_URL = `${API_BASE_URL}/admin/affiliate/remark/add`;
 
-function useToken() {
-  return useMemo(() => {
-    const raw = localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) return null;
-    try {
-      return JSON.parse(raw)?.token as string | null;
-    } catch {
-      return null;
-    }
-  }, []);
-}
 
-function useUserRole(): UserRole | null {
-  return useMemo(() => {
-    const raw = localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) return null;
-    try {
-      return JSON.parse(raw)?.role as UserRole | null;
-    } catch {
-      return null;
-    }
-  }, []);
-}
-
-function useAdminId() {
-  return useMemo(() => {
-    const raw = localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) return null;
-    try {
-      const parsed = JSON.parse(raw);
-      return parsed?.user?.id || parsed?.user?._id || null;
-    } catch {
-      return null;
-    }
-  }, []);
-}
 
 function formatDate(value?: string) {
   if (!value) return "—";
@@ -176,9 +142,7 @@ function normalizeRemark(raw: any): RemarkRow {
 }
 
 export function AffiliateInspectionModal({ open, onOpenChange, affiliate }: AffiliateInspectionModalProps) {
-  const token = useToken();
-  const role = useUserRole();
-  const adminId = useAdminId();
+  const { token, role, adminId } = useAuth();
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState<"referrals" | "remarks">("referrals");
@@ -197,7 +161,7 @@ export function AffiliateInspectionModal({ open, onOpenChange, affiliate }: Affi
   const [remarkText, setRemarkText] = useState("");
   const [submittingRemark, setSubmittingRemark] = useState(false);
 
-  const canManageRemarks = role === "admin" || role === "account";
+  const canManageRemarks = true;
 
   const fetchDetails = async () => {
     if (!token || !affiliate?.userId) return;

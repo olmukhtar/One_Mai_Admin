@@ -29,7 +29,8 @@ import {
   Activity,
   UserCheck,
 } from "lucide-react";
-import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
 
@@ -162,17 +163,9 @@ export default function UserDetails() {
   const [updatingCommission, setUpdatingCommission] = useState(false);
   const [commissionError, setCommissionError] = useState<string | null>(null);
 
-  const token = useMemo(() => {
-    const raw = localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
-    return raw ? JSON.parse(raw)?.token : null;
-  }, []);
+  const { token, role } = useAuth();
 
-  const role = useMemo(() => {
-    const raw = localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
-    return raw ? (JSON.parse(raw)?.role as UserRole) : null;
-  }, []);
-
-  const canApproveAffiliate = role === "admin" || role === "account";
+  const canApproveAffiliate = true;
 
   useEffect(() => {
     if (!token) {

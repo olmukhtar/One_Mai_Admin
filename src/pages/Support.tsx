@@ -9,8 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { X, Send, Loader2, HeadphonesIcon, MessageSquare } from "lucide-react";
 
-import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import { API_BASE_URL } from "@/lib/constants";
+import { useAuth } from "@/contexts/AuthContext";
 
 type Message = {
   _id: string;
@@ -44,34 +45,8 @@ type UserRole = "admin" | "account" | "front_desk" | "customer_support";
 const BASE = API_BASE_URL;
 const SUPPORTS_URL = `${BASE}/support`;
 
-function useToken() {
-  return useMemo(() => {
-    const raw = localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) return null;
-    try {
-      return JSON.parse(raw)?.token as string | null;
-    } catch {
-      return null;
-    }
-  }, []);
-}
-
-function useUserRole(): UserRole | null {
-  return useMemo(() => {
-    const raw = localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) return null;
-    try {
-      const parsed = JSON.parse(raw);
-      return (parsed?.role as UserRole) || null;
-    } catch {
-      return null;
-    }
-  }, []);
-}
-
 export default function SupportPage() {
-  const token = useToken();
-  const role = useUserRole();
+  const { token } = useAuth();
   const navigate = useNavigate();
 
   const [data, setData] = useState<SupportsResponse | null>(null);
@@ -84,18 +59,9 @@ export default function SupportPage() {
   const [sendingReply, setSendingReply] = useState(false);
   const [replyError, setReplyError] = useState<string | null>(null);
 
-  const canView = role === "admin" || role === "account" || role === "customer_support" || role === "front_desk";
-  const canRespond = role === "admin" || role === "account" || role === "customer_support";
-  const isViewOnly = role === "front_desk";
-
   useEffect(() => {
     if (!token) {
       navigate("/login", { replace: true, state: { from: "/support" } });
-      return;
-    }
-
-    if (!canView) {
-      setErr("You don't have permission to view support tickets.");
       return;
     }
 
@@ -133,7 +99,7 @@ export default function SupportPage() {
       .finally(() => setLoading(false));
 
     return () => ctl.abort();
-  }, [token, canView, navigate]);
+  }, [token, navigate]);
 
   const handleViewTicket = (ticket: Support) => {
     setSelectedTicket(ticket);
@@ -148,7 +114,7 @@ export default function SupportPage() {
   };
 
   const handleSendReply = async () => {
-    if (!replyMessage.trim() || !selectedTicket || !token || !canRespond) return;
+    if (!replyMessage.trim() || !selectedTicket || !token) return;
 
     setSendingReply(true);
     setReplyError(null);
@@ -226,7 +192,7 @@ export default function SupportPage() {
   };
 
   const handleUpdateStatus = async (newStatus: string) => {
-    if (!selectedTicket || !token || !canRespond) return;
+    if (!selectedTicket || !token) return;
 
     try {
       const response = await apiFetch(`${SUPPORTS_URL}/${selectedTicket._id}/status`, {
@@ -399,27 +365,25 @@ export default function SupportPage() {
                 ))}
               </div>
 
-              {canRespond && (
-                <div className="p-4 border-t border-border/60 bg-muted/20 space-y-3 text-xs">
-                  {replyError && <p className="text-rose-600 font-medium">{replyError}</p>}
-                  <div className="flex gap-2">
-                    <textarea
-                      value={replyMessage}
-                      onChange={(e) => setReplyMessage(e.target.value)}
-                      placeholder="Type response to member..."
-                      rows={2}
-                      className="flex-1 rounded-xl border border-border bg-background p-2.5 text-xs"
-                    />
-                    <Button
-                      onClick={handleSendReply}
-                      disabled={sendingReply || !replyMessage.trim()}
-                      className="h-auto px-4 bg-brand hover:bg-brand-hover text-white rounded-xl"
-                    >
-                      {sendingReply ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                    </Button>
-                  </div>
+              <div className="p-4 border-t border-border/60 bg-muted/20 space-y-3 text-xs">
+                {replyError && <p className="text-rose-600 font-medium">{replyError}</p>}
+                <div className="flex gap-2">
+                  <textarea
+                    value={replyMessage}
+                    onChange={(e) => setReplyMessage(e.target.value)}
+                    placeholder="Type response to member..."
+                    rows={2}
+                    className="flex-1 rounded-xl border border-border bg-background p-2.5 text-xs"
+                  />
+                  <Button
+                    onClick={handleSendReply}
+                    disabled={sendingReply || !replyMessage.trim()}
+                    className="h-auto px-4 bg-brand hover:bg-brand-hover text-white rounded-xl"
+                  >
+                    {sendingReply ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  </Button>
                 </div>
-              )}
+              </div>
             </Card>
           </div>
         )}

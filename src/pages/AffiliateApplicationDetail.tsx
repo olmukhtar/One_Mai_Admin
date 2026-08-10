@@ -17,8 +17,9 @@ import {
   ArrowLeft,
 } from "lucide-react";
 
-import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import { API_BASE_URL } from "@/lib/constants";
+import { useAuth } from "@/contexts/AuthContext";
 
 type ApplicationStatus = "pending" | "approved" | "rejected" | "more_information" | "interview";
 
@@ -34,6 +35,7 @@ type ApplicationUser = {
   country?: string;
   currency?: string;
   isApproved?: boolean;
+  isVerified?: boolean;
   integrity?: number;
   completedCycle?: number;
   payoutBalance?: number;
@@ -115,43 +117,7 @@ const CHANNEL_LABELS: Record<string, string> = {
   other: "Other",
 };
 
-function useToken() {
-  return useMemo(() => {
-    const raw = localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) return null;
-    try {
-      return JSON.parse(raw)?.token as string | null;
-    } catch {
-      return null;
-    }
-  }, []);
-}
 
-function useUserRole(): UserRole | null {
-  return useMemo(() => {
-    const raw = localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) return null;
-    try {
-      const parsed = JSON.parse(raw);
-      return (parsed?.role as UserRole) || null;
-    } catch {
-      return null;
-    }
-  }, []);
-}
-
-function useAdminId(): string | null {
-  return useMemo(() => {
-    const raw = localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) return null;
-    try {
-      const parsed = JSON.parse(raw);
-      return parsed?.user?.id || parsed?.user?._id || null;
-    } catch {
-      return null;
-    }
-  }, []);
-}
 
 function nameOf(u?: ApplicationUser) {
   if (!u) return "—";
@@ -181,11 +147,7 @@ const DETAILS_URL = (id: string) => `${API_BASE_URL}/admin/affiliate-application
 export default function AffiliateApplicationDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const token = useToken();
-  const role = useUserRole();
-  const adminId = useAdminId();
-
-  const canReview = role === "admin" || role === "account";
+  const { token, adminId } = useAuth();
 
   const [details, setDetails] = useState<DetailsResponse["data"] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -520,109 +482,103 @@ export default function AffiliateApplicationDetail() {
           </div>
 
           {/* Right Column - Review Form */}
-          {canReview && (
-            <div className="lg:col-span-1">
-              <Card className="sticky top-6">
-                <CardHeader>
-                  <CardTitle className="text-base">Review Application</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {submitError && (
-                    <div className="text-xs text-red-600 bg-red-50 p-3 rounded-lg border border-red-100 flex items-center gap-2">
-                      <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
-                      <span>{submitError}</span>
-                    </div>
-                  )}
-                  {submitSuccess && (
-                    <div className="text-xs text-green-600 bg-green-50 p-3 rounded-lg border border-green-100 flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
-                      <span>{submitSuccess}</span>
-                    </div>
-                  )}
-
-                  <div className="space-y-2">
-                    <Label htmlFor="review-status" className="text-sm font-semibold">
-                      Decision
-                    </Label>
-                    <Select value={reviewStatus} onValueChange={(v: any) => setReviewStatus(v)}>
-                      <SelectTrigger id="review-status" className="w-full text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {STATUS_OPTIONS.map((s) => (
-                          <SelectItem key={s.value} value={s.value}>
-                            {s.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+          <div className="lg:col-span-1">
+            <Card className="sticky top-6">
+              <CardHeader>
+                <CardTitle className="text-base">Review Application</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {submitError && (
+                  <div className="text-xs text-red-600 bg-red-50 p-3 rounded-lg border border-red-100 flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                    <span>{submitError}</span>
                   </div>
+                )}
+                {submitSuccess && (
+                  <div className="text-xs text-green-600 bg-green-50 p-3 rounded-lg border border-green-100 flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+                    <span>{submitSuccess}</span>
+                  </div>
+                )}
 
-                  <div
-                    className={`p-3 rounded-lg border-2 space-y-2 ${reviewStatus === "approved" ? "bg-gradient-to-r from-purple-50 to-purple-100 border-purple-300" : "bg-slate-50 border-slate-200"}`}
+                <div className="space-y-2">
+                  <Label htmlFor="review-status" className="text-sm font-semibold">
+                    Decision
+                  </Label>
+                  <Select
+                    value={reviewStatus}
+                    onValueChange={(val) => setReviewStatus(val as ApplicationStatus)}
                   >
-                    <Label htmlFor="commission-rate" className={`text-xs font-semibold ${reviewStatus === "approved" ? "text-purple-900" : "text-slate-600"}`}>
-                      Commission Rate (%) {reviewStatus === "approved" && "*"}
+                    <SelectTrigger id="review-status" className="w-full text-xs rounded-xl h-9">
+                      <SelectValue placeholder="Select Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="approved">Approve Application</SelectItem>
+                      <SelectItem value="rejected">Reject Application</SelectItem>
+                      <SelectItem value="more_information">Request Info</SelectItem>
+                      <SelectItem value="interview">Invite to Interview</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {reviewStatus === "approved" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="commission-rate" className="text-xs font-semibold">
+                      Commission Rate (%)
                     </Label>
                     <input
                       id="commission-rate"
                       type="number"
-                      min="0"
-                      max="100"
-                      step="0.1"
                       value={commissionRate}
                       onChange={(e) => setCommissionRate(e.target.value)}
-                      placeholder="e.g. 5"
-                      disabled={reviewStatus !== "approved"}
-                      className={`w-full px-3 py-2 border-2 rounded-lg focus:outline-none focus:ring-2 focus:border-transparent text-sm font-medium ${reviewStatus === "approved" ? "border-purple-300 bg-white focus:ring-purple-500" : "border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed"}`}
-                    />
-                    <p className={`text-xs ${reviewStatus === "approved" ? "text-purple-700" : "text-slate-500"}`}>
-                      {reviewStatus === "approved" ? "Commission to award this affiliate" : "Required when approving"}
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="review-note" className="text-xs font-semibold">
-                      Internal Note
-                    </Label>
-                    <Textarea
-                      id="review-note"
-                      value={reviewNote}
-                      onChange={(e) => setReviewNote(e.target.value)}
-                      placeholder="Not shared with applicant"
-                      rows={3}
-                      className="text-sm"
+                      placeholder="e.g. 10"
+                      className="w-full rounded-xl border border-input bg-background px-3 py-1 text-xs shadow-xs transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 h-9"
                     />
                   </div>
+                )}
 
-                  <div className="space-y-2">
-                    <Label htmlFor="review-reason" className="text-xs font-semibold">
-                      Feedback to Applicant
-                    </Label>
-                    <Textarea
-                      id="review-reason"
-                      value={reviewReason}
-                      onChange={(e) => setReviewReason(e.target.value)}
-                      placeholder="Optional feedback"
-                      rows={3}
-                      className="text-sm"
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="review-note" className="text-xs font-semibold">
+                    Internal Note
+                  </Label>
+                  <Textarea
+                    id="review-note"
+                    value={reviewNote}
+                    onChange={(e) => setReviewNote(e.target.value)}
+                    placeholder="Notes for other admins"
+                    rows={3}
+                    className="text-sm font-medium"
+                  />
+                </div>
 
-                  <Button onClick={handleSubmitReview} disabled={submitting} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
-                    {submitting ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        Saving...
-                      </>
-                    ) : (
-                      "Save Decision"
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          )}
+                <div className="space-y-2">
+                  <Label htmlFor="review-reason" className="text-xs font-semibold text-slate-700">
+                    Applicant Feedback Note
+                  </Label>
+                  <Textarea
+                    id="review-reason"
+                    value={reviewReason}
+                    onChange={(e) => setReviewReason(e.target.value)}
+                    placeholder="Optional feedback"
+                    rows={3}
+                    className="text-sm font-medium"
+                  />
+                </div>
+
+                <Button onClick={handleSubmitReview} disabled={submitting} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+                  {submitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Decision"
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </AdminLayout>

@@ -55,42 +55,11 @@ type StatsResponse = {
   }>;
 };
 
-type UserRole = "admin" | "account" | "front_desk" | "customer_support";
-
-import { apiFetch, AUTH_STORAGE_KEY } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
+import { useAuth, UserRole } from "@/contexts/AuthContext";
 import { API_BASE_URL } from "@/lib/constants";
 
 const STATS_URL = `${API_BASE_URL}/admin/dashboard/stats`;
-
-function useAuthToken() {
-  return useMemo(() => {
-    const raw =
-      localStorage.getItem(AUTH_STORAGE_KEY) ||
-      sessionStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) return null;
-    try {
-      const parsed = JSON.parse(raw);
-      return parsed?.token as string | null;
-    } catch {
-      return null;
-    }
-  }, []);
-}
-
-function useUserRole(): UserRole | null {
-  return useMemo(() => {
-    const raw =
-      localStorage.getItem(AUTH_STORAGE_KEY) ||
-      sessionStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) return null;
-    try {
-      const parsed = JSON.parse(raw);
-      return (parsed?.role as UserRole) || null;
-    } catch {
-      return null;
-    }
-  }, []);
-}
 
 function formatNgn(n: number) {
   try {
@@ -102,20 +71,13 @@ function formatNgn(n: number) {
   } catch {
     return `₦${Math.round(n).toLocaleString()}`;
   }
-}
-
-function KPIs({
+}function KPIs({
   data,
-  role,
   loading,
 }: {
   data: StatsResponse["stats"] | null;
-  role: UserRole | null;
   loading: boolean;
 }) {
-  const canSeeFinancials = role === "admin" || role === "account";
-  const canSeePendingPayouts = role === "admin" || role === "account";
-
   const items = [
     {
       title: "Total Registered Users",
@@ -123,7 +85,6 @@ function KPIs({
       icon: Users,
       trend: "+12.4%",
       subtitle: "vs last month",
-      visible: true,
     },
     {
       title: "Savings Circles",
@@ -131,7 +92,6 @@ function KPIs({
       icon: Layers,
       trend: "+8.2%",
       subtitle: "Total created",
-      visible: true,
     },
     {
       title: "Active Circles",
@@ -139,7 +99,6 @@ function KPIs({
       icon: UserCheck,
       trend: "Live",
       subtitle: "Currently contributing",
-      visible: true,
     },
     {
       title: "Pending Payouts",
@@ -148,7 +107,6 @@ function KPIs({
       trend: "Action Required",
       trendDirection: "down" as const,
       subtitle: "Requests queued",
-      visible: canSeePendingPayouts,
     },
     {
       title: "Total Txn Volume",
@@ -156,7 +114,6 @@ function KPIs({
       icon: TrendingUp,
       trend: "+18.6%",
       subtitle: "Gross volume",
-      visible: canSeeFinancials,
     },
     {
       title: "Platform Revenue",
@@ -164,9 +121,8 @@ function KPIs({
       icon: ArrowUpRight,
       trend: "+15.3%",
       subtitle: "Net platform earnings",
-      visible: canSeeFinancials,
     },
-  ].filter((item) => item.visible);
+  ];
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
@@ -189,18 +145,11 @@ function KPIs({
 function TransactionsTableWidget({
   rows,
   loading,
-  role,
 }: {
   rows: StatsResponse["recentTransactions"];
   loading: boolean;
-  role: UserRole | null;
 }) {
   const navigate = useNavigate();
-  const showFullAmounts = role === "admin" || role === "account";
-  const canViewTransactions =
-    role === "admin" || role === "account" || role === "customer_support";
-
-  if (!canViewTransactions) return null;
 
   return (
     <Card className="border border-border/80 shadow-sm rounded-2xl bg-card overflow-hidden">
@@ -231,7 +180,7 @@ function TransactionsTableWidget({
                 <th className="py-3 px-4">Reference</th>
                 <th className="py-3 px-4">Type</th>
                 <th className="py-3 px-4">Status</th>
-                {showFullAmounts && <th className="py-3 px-4">Amount</th>}
+                <th className="py-3 px-4">Amount</th>
                 <th className="py-3 px-4">Date</th>
               </tr>
             </thead>
@@ -247,7 +196,7 @@ function TransactionsTableWidget({
               ) : rows.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={showFullAmounts ? 5 : 4}
+                    colSpan={5}
                     className="py-10 text-center text-xs text-muted-foreground"
                   >
                     No recent transactions recorded.
@@ -269,11 +218,9 @@ function TransactionsTableWidget({
                     <td className="py-3 px-4">
                       <StatusBadge status={t.status} />
                     </td>
-                    {showFullAmounts && (
-                      <td className="py-3 px-4 font-semibold text-xs text-foreground">
-                        {formatNgn(t.amount)}
-                      </td>
-                    )}
+                    <td className="py-3 px-4 font-semibold text-xs text-foreground">
+                      {formatNgn(t.amount)}
+                    </td>
                     <td className="py-3 px-4 text-xs text-muted-foreground">
                       {new Date(t.createdAt).toLocaleString("en-NG", {
                         month: "short",
@@ -295,13 +242,9 @@ function TransactionsTableWidget({
 
 function ContributionsChartWidget({
   rows,
-  role,
 }: {
   rows: StatsResponse["recentTransactions"];
-  role: UserRole | null;
 }) {
-  const canViewChart = role === "admin" || role === "account";
-
   const series = useMemo(() => {
     const map = new Map<string, number>();
     for (const t of rows) {
@@ -315,8 +258,6 @@ function ContributionsChartWidget({
       .sort((a, b) => a.date.localeCompare(b.date));
     return arr;
   }, [rows]);
-
-  if (!canViewChart) return null;
 
   return (
     <Card className="border border-border/80 shadow-sm rounded-2xl bg-card overflow-hidden">
@@ -413,13 +354,9 @@ function ContributionsChartWidget({
 
 function SummaryWidget({
   data,
-  role,
 }: {
   data: StatsResponse["stats"] | null;
-  role: UserRole | null;
 }) {
-  const canViewFinancials = role === "admin" || role === "account";
-
   return (
     <Card className="border border-border/80 shadow-sm rounded-2xl bg-card overflow-hidden">
       <CardHeader className="pb-3 border-b border-border/60">
@@ -435,23 +372,19 @@ function SummaryWidget({
           </span>
         </div>
 
-        {canViewFinancials && (
-          <>
-            <div className="flex items-center justify-between p-3 rounded-xl bg-muted/40">
-              <span className="text-muted-foreground">Gross Transaction Volume</span>
-              <span className="font-bold text-brand text-sm">
-                {formatNgn(data?.totalTransactionValue ?? 0)}
-              </span>
-            </div>
+        <div className="flex items-center justify-between p-3 rounded-xl bg-muted/40">
+          <span className="text-muted-foreground">Gross Transaction Volume</span>
+          <span className="font-bold text-brand text-sm">
+            {formatNgn(data?.totalTransactionValue ?? 0)}
+          </span>
+        </div>
 
-            <div className="flex items-center justify-between p-3 rounded-xl bg-muted/40">
-              <span className="text-muted-foreground">Net Platform Earnings</span>
-              <span className="font-bold text-emerald-600 text-sm">
-                {formatNgn(data?.platformRevenue ?? 0)}
-              </span>
-            </div>
-          </>
-        )}
+        <div className="flex items-center justify-between p-3 rounded-xl bg-muted/40">
+          <span className="text-muted-foreground">Net Platform Earnings</span>
+          <span className="font-bold text-emerald-600 text-sm">
+            {formatNgn(data?.platformRevenue ?? 0)}
+          </span>
+        </div>
 
         <div className="pt-2 border-t border-border/60 flex items-center justify-between text-muted-foreground">
           <span>Active Operations Status</span>
@@ -466,16 +399,11 @@ function SummaryWidget({
 }
 
 export default function Dashboard() {
-  const token = useAuthToken();
-  const role = useUserRole();
+  const { token } = useAuth();
   const navigate = useNavigate();
   const [data, setData] = useState<StatsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
-
-  const canViewTransactions =
-    role === "admin" || role === "account" || role === "customer_support";
-  const canViewChart = role === "admin" || role === "account";
 
   useEffect(() => {
     if (!token) {
@@ -529,37 +457,25 @@ export default function Dashboard() {
         )}
 
         {/* Top KPIs Grid */}
-        <KPIs data={data?.stats ?? null} role={role} loading={loading} />
+        <KPIs data={data?.stats ?? null} loading={loading} />
 
         {/* Main Content Layout */}
         <div className="grid gap-6 lg:grid-cols-3">
-          {canViewTransactions ? (
-            <>
-              <div className="lg:col-span-2">
-                <TransactionsTableWidget
-                  rows={data?.recentTransactions ?? []}
-                  loading={loading}
-                  role={role}
-                />
-              </div>
-              <div className="lg:col-span-1">
-                <SummaryWidget data={data?.stats ?? null} role={role} />
-              </div>
-            </>
-          ) : (
-            <div className="lg:col-span-3 max-w-md">
-              <SummaryWidget data={data?.stats ?? null} role={role} />
-            </div>
-          )}
+          <div className="lg:col-span-2">
+            <TransactionsTableWidget
+              rows={data?.recentTransactions ?? []}
+              loading={loading}
+            />
+          </div>
+          <div className="lg:col-span-1">
+            <SummaryWidget data={data?.stats ?? null} />
+          </div>
         </div>
 
         {/* Chart Section */}
-        {canViewChart && (
-          <ContributionsChartWidget
-            rows={data?.recentTransactions ?? []}
-            role={role}
-          />
-        )}
+        <ContributionsChartWidget
+          rows={data?.recentTransactions ?? []}
+        />
       </div>
     </AdminLayout>
   );
