@@ -19,6 +19,7 @@ import {
   UserCheck,
   Send,
   Loader2,
+  Download,
 } from "lucide-react";
 
 type UserRole = "admin" | "account" | "front_desk" | "customer_support";
@@ -58,6 +59,8 @@ const AFFILIATE_REFERRALS_URL = (userId: string) =>
 const AFFILIATE_REMARKS_URL = (userId: string) =>
   `${API_BASE_URL}/admin/affiliate/remark/${userId}`;
 const ADD_AFFILIATE_REMARK_URL = `${API_BASE_URL}/admin/affiliate/remark/add`;
+const DOWNLOAD_REFERRALS_URL = (affiliateId: string) =>
+  `${API_BASE_URL}/admin/affiliate/${affiliateId}/referrals/xlsx`;
 
 
 
@@ -160,6 +163,7 @@ export function AffiliateInspectionModal({ open, onOpenChange, affiliate }: Affi
   // New Remark Form State
   const [remarkText, setRemarkText] = useState("");
   const [submittingRemark, setSubmittingRemark] = useState(false);
+  const [downloadingReferrals, setDownloadingReferrals] = useState(false);
 
   const canManageRemarks = true;
 
@@ -281,6 +285,60 @@ export function AffiliateInspectionModal({ open, onOpenChange, affiliate }: Affi
     }
   };
 
+  const handleDownloadReferrals = async () => {
+    if (!affiliate?.userId) {
+      toast({
+        title: "Download unavailable",
+        description: "Affiliate details are missing for this export.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setDownloadingReferrals(true);
+    try {
+      const res = await apiFetch(DOWNLOAD_REFERRALS_URL(affiliate.userId), {
+        method: "GET",
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.message || `Failed to download referral list: ${res.status}`);
+      }
+
+      const blob = await res.blob();
+      const contentDisposition = res.headers.get("content-disposition") || "";
+      const fileNameMatch = contentDisposition.match(/filename\\*?=(?:UTF-8'')?\"?([^\";]+)\"?/i);
+      const fallbackName = `${affiliate.name || "affiliate"}-referrals.xlsx`
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+      const fileName = decodeURIComponent(fileNameMatch?.[1] || fallbackName || "referrals.xlsx");
+
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = fileName.endsWith(".xlsx") ? fileName : `${fileName}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+
+      toast({
+        title: "Referral export started",
+        description: `Downloaded referral list for ${affiliate.name}.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Download failed",
+        description: error?.message || "The referral list could not be downloaded.",
+        variant: "destructive",
+      });
+    } finally {
+      setDownloadingReferrals(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl border border-border shadow-2xl bg-card p-6">
@@ -321,6 +379,23 @@ export function AffiliateInspectionModal({ open, onOpenChange, affiliate }: Affi
 
           {/* Referrals List Tab */}
           <TabsContent value="referrals" className="pt-4 space-y-4">
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadReferrals}
+                disabled={downloadingReferrals}
+                className="rounded-xl text-xs"
+              >
+                {downloadingReferrals ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4" />
+                )}
+                Download Referral List
+              </Button>
+            </div>
             {referralsLoading ? (
               <div className="py-12 text-center text-xs text-muted-foreground animate-pulse">
                 Loading referral list...
