@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import {
   Select,
   SelectContent,
@@ -15,15 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Eye, EyeOff, Loader2, UserPlus, ShieldCheck, KeyRound, MailCheck } from "lucide-react";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Eye, EyeOff, Loader2, UserPlus, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiFetch } from "@/lib/api";
 import { API_BASE_URL } from "@/lib/constants";
@@ -47,9 +39,6 @@ const FETCH_ADMINS_ENDPOINT = `${BASE}/admin/fetch-admins`;
 const UPDATE_ENDPOINT = (id: string) => `${BASE}/admin/update-admins/${id}`;
 const DELETE_ENDPOINT = (id: string) => `${BASE}/admin/delete-admins/${id}`;
 const ROLES_ENDPOINT = `${BASE}/admin/auth/get-roles`;
-const RECOVER_ACCOUNT_ENDPOINT = `${BASE}/admin/auth/recover-account`;
-const RESET_PASSWORD_ENDPOINT = `${BASE}/admin/auth/reset-password`;
-
 interface Role {
   label: string;
   value: string;
@@ -81,17 +70,6 @@ export default function CreateAdmin() {
   const [editEmail, setEditEmail] = useState("");
   const [editRole, setEditRole] = useState("");
   const [updating, setUpdating] = useState(false);
-
-  const [isResetOpen, setIsResetOpen] = useState(false);
-  const [resettingAdmin, setResettingAdmin] = useState<AdminUser | null>(null);
-  const [resetEmail, setResetEmail] = useState("");
-  const [resetOtp, setResetOtp] = useState("");
-  const [resetPassword, setResetPassword] = useState("");
-  const [resetConfirmPassword, setResetConfirmPassword] = useState("");
-  const [showResetPassword, setShowResetPassword] = useState(false);
-  const [showResetConfirmPassword, setShowResetConfirmPassword] = useState(false);
-  const [sendingResetCode, setSendingResetCode] = useState(false);
-  const [submittingReset, setSubmittingReset] = useState(false);
 
   useEffect(() => {
     if (!token) {
@@ -242,109 +220,6 @@ export default function CreateAdmin() {
     setEditEmail(admin.email);
     setEditRole(admin.role);
     setIsEditOpen(true);
-  }
-
-  function openReset(admin: AdminUser) {
-    setResettingAdmin(admin);
-    setResetEmail(admin.email);
-    setResetOtp("");
-    setResetPassword("");
-    setResetConfirmPassword("");
-    setShowResetPassword(false);
-    setShowResetConfirmPassword(false);
-    setIsResetOpen(true);
-  }
-
-  async function onSendResetCode() {
-    if (!resetEmail.trim()) {
-      toast({
-        title: "Email required",
-        description: "Choose an admin account with a valid email address first.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setSendingResetCode(true);
-    try {
-      const url = new URL(RECOVER_ACCOUNT_ENDPOINT);
-      url.searchParams.set("email", resetEmail.trim());
-
-      const res = await apiFetch(url.toString(), { method: "GET" });
-      const body = await res.json().catch(() => null);
-
-      if (!res.ok) {
-        throw new Error(body?.message || "Failed to send password reset code.");
-      }
-
-      toast({
-        title: "Reset code sent",
-        description: body?.message || `A reset code was sent to ${resetEmail.trim()}.`,
-      });
-    } catch (e: any) {
-      toast({
-        title: "Unable to send code",
-        description: e?.message || "The reset email could not be sent.",
-        variant: "destructive",
-      });
-    } finally {
-      setSendingResetCode(false);
-    }
-  }
-
-  async function onResetPassword(e: React.FormEvent) {
-    e.preventDefault();
-
-    if (!resetEmail.trim()) {
-      toast({ title: "Email required", description: "Reset email is missing.", variant: "destructive" });
-      return;
-    }
-    if (resetOtp.trim().length !== 4) {
-      toast({ title: "OTP required", description: "Enter the 4-digit reset code.", variant: "destructive" });
-      return;
-    }
-    if (!resetPassword || resetPassword.length < 6) {
-      toast({ title: "Password too short", description: "Use at least 6 characters.", variant: "destructive" });
-      return;
-    }
-    if (resetPassword !== resetConfirmPassword) {
-      toast({ title: "Passwords do not match", description: "Confirm the same new password.", variant: "destructive" });
-      return;
-    }
-
-    setSubmittingReset(true);
-    try {
-      const res = await apiFetch(RESET_PASSWORD_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: resetEmail.trim(),
-          otp: resetOtp.trim(),
-          newPassword: resetPassword,
-        }),
-      });
-
-      const body = await res.json().catch(() => null);
-
-      if (!res.ok) {
-        throw new Error(body?.message || "Failed to reset password.");
-      }
-
-      toast({
-        title: "Password reset",
-        description: body?.message || `Password updated for ${resetEmail.trim()}.`,
-      });
-      setIsResetOpen(false);
-      setResettingAdmin(null);
-    } catch (e: any) {
-      toast({
-        title: "Reset failed",
-        description: e?.message || "The password could not be updated.",
-        variant: "destructive",
-      });
-    } finally {
-      setSubmittingReset(false);
-    }
   }
 
   async function onUpdate(e: React.FormEvent) {
@@ -518,7 +393,6 @@ export default function CreateAdmin() {
           data={admins}
           actionItems={[
             { label: "Edit Role & Info", onClick: (row: AdminUser) => openEdit(row) },
-            { label: "Reset Password", onClick: (row: AdminUser) => openReset(row) },
             { label: "Revoke Access", onClick: (row: AdminUser) => onDelete(row) },
           ]}
           loading={loadingAdmins}
@@ -583,134 +457,6 @@ export default function CreateAdmin() {
                   className="bg-brand hover:bg-brand-hover text-white rounded-xl text-xs font-semibold"
                 >
                   {updating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Changes"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog
-          open={isResetOpen}
-          onOpenChange={(open) => {
-            setIsResetOpen(open);
-            if (!open) setResettingAdmin(null);
-          }}
-        >
-          <DialogContent className="max-w-lg rounded-2xl border border-border shadow-2xl bg-card p-6">
-            <DialogHeader className="border-b border-border/60 pb-3">
-              <DialogTitle className="text-base font-semibold flex items-center gap-2">
-                <KeyRound className="h-4 w-4 text-brand" />
-                Reset Admin Password
-              </DialogTitle>
-              <DialogDescription className="text-xs">
-                Send a recovery code to the selected admin, then submit the OTP and new password.
-              </DialogDescription>
-            </DialogHeader>
-
-            <form onSubmit={onResetPassword} className="space-y-4 pt-3 text-xs">
-              <div className="space-y-1">
-                <Label className="font-semibold">Admin Email</Label>
-                <Input
-                  value={resetEmail}
-                  onChange={(e) => setResetEmail(e.target.value)}
-                  className="h-9 rounded-xl text-xs"
-                  placeholder="admin@onemai.ng"
-                />
-              </div>
-
-              <div className="rounded-2xl border border-border/70 bg-muted/20 p-3 flex items-center justify-between gap-3">
-                <div className="space-y-1">
-                  <p className="font-semibold text-foreground">Step 1: Send recovery code</p>
-                  <p className="text-[11px] text-muted-foreground">
-                    This triggers the admin recovery email for {resettingAdmin?.name || resettingAdmin?.email || "the selected admin"}.
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={onSendResetCode}
-                  disabled={sendingResetCode}
-                  className="rounded-xl text-xs shrink-0"
-                >
-                  {sendingResetCode ? <Loader2 className="h-4 w-4 animate-spin" /> : <MailCheck className="h-4 w-4" />}
-                  Send Code
-                </Button>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="font-semibold">OTP Code</Label>
-                <InputOTP
-                  maxLength={4}
-                  value={resetOtp}
-                  onChange={(value) => setResetOtp(value.toUpperCase())}
-                  pattern="^[A-Za-z0-9]+$"
-                >
-                  <InputOTPGroup>
-                    <InputOTPSlot index={0} className="h-10 w-12 rounded-l-xl" />
-                    <InputOTPSlot index={1} className="h-10 w-12" />
-                    <InputOTPSlot index={2} className="h-10 w-12" />
-                    <InputOTPSlot index={3} className="h-10 w-12 rounded-r-xl" />
-                  </InputOTPGroup>
-                </InputOTP>
-              </div>
-
-              <div className="space-y-1">
-                <Label className="font-semibold">New Password</Label>
-                <div className="relative">
-                  <Input
-                    type={showResetPassword ? "text" : "password"}
-                    value={resetPassword}
-                    onChange={(e) => setResetPassword(e.target.value)}
-                    className="h-9 rounded-xl text-xs pr-10"
-                    placeholder="Enter new password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowResetPassword((value) => !value)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showResetPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <Label className="font-semibold">Confirm New Password</Label>
-                <div className="relative">
-                  <Input
-                    type={showResetConfirmPassword ? "text" : "password"}
-                    value={resetConfirmPassword}
-                    onChange={(e) => setResetConfirmPassword(e.target.value)}
-                    className="h-9 rounded-xl text-xs pr-10"
-                    placeholder="Confirm new password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowResetConfirmPassword((value) => !value)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showResetConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <DialogFooter className="pt-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsResetOpen(false)}
-                  className="rounded-xl text-xs"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={submittingReset}
-                  className="bg-brand hover:bg-brand-hover text-white rounded-xl text-xs font-semibold"
-                >
-                  {submittingReset ? <Loader2 className="h-4 w-4 animate-spin" /> : "Update Password"}
                 </Button>
               </DialogFooter>
             </form>

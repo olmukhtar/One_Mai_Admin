@@ -27,6 +27,7 @@ import CircleProgress from "./pages/reports/CircleProgress";
 import Groups from "./pages/Groups";
 import GroupDetails from "./pages/GroupDetails";
 import Login from "./pages/Login";
+import ResetPassword from "./pages/ResetPassword";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import Notifications from "./pages/Notifications";
@@ -41,7 +42,7 @@ import EditBlog from "./pages/EditBlog";
 import Monify from "./pages/Monify";
 import Unauthorized from "./pages/Unauthorized";
 
-import { useAuth } from "./contexts/AuthContext";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
 const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
@@ -117,16 +118,18 @@ function RootLogin() {
 }
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <InactivityMonitor>
-          <Routes>
+  <AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <InactivityMonitor>
+            <Routes>
             {/* Root is LOGIN */}
             <Route path="/" element={<RootLogin />} />
             <Route path="/login" element={<RootLogin />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
             {/* Protected app routes */}
             <Route
@@ -326,11 +329,12 @@ const App = () => (
 
             {/* Catch-all */}
             <Route path="*" element={<NotFound />} />
-          </Routes>
-        </InactivityMonitor>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+            </Routes>
+          </InactivityMonitor>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </AuthProvider>
 );
 
 export default App;

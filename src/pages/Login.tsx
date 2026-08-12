@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,6 +29,10 @@ export default function Login() {
     const params = new URLSearchParams(location.search);
     if (params.get("expired") === "true") {
       setError("Session expired. Please log in again.");
+      return;
+    }
+    if (params.get("reset") === "success") {
+      setError("Password reset successful. Sign in with your new password.");
     }
   }, [location.search]);
 
@@ -235,6 +239,12 @@ export default function Login() {
                     />
                     Remember session
                   </label>
+                  <Link
+                    to={`/reset-password${email ? `?email=${encodeURIComponent(email)}` : ""}`}
+                    className="text-xs font-medium text-brand hover:text-brand-hover transition-colors"
+                  >
+                    Reset password
+                  </Link>
                 </div>
 
                 {error && (
