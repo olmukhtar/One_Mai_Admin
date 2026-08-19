@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function Settings() {
   const { toast } = useToast();
-  const [orgName, setOrgName] = useState("Onemai Financial Platform");
+  const [orgName, setOrgName] = useState("OneMAI Financial Platform");
   const [timezone, setTimezone] = useState("Africa/Lagos");
   const [currency, setCurrency] = useState("NGN");
 

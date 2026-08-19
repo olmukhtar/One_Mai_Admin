@@ -155,7 +155,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 O
               </div>
               <span className="font-extrabold text-foreground text-sm tracking-tight">
-                ONEMAI
+                OneMAI
               </span>
             </div>
           </div>

@@ -138,7 +138,7 @@ export default function Login() {
 
           <div className="space-y-4">
             <h1 className="text-4xl font-extrabold tracking-tight leading-tight">
-              Manage Onemai Financial Ecosystem with Ease.
+              Manage OneMAI Financial Ecosystem with Ease.
             </h1>
             <p className="text-white/80 text-base leading-relaxed">
               Real-time user analytics, group contribution tracking, monify payouts, partner approvals, and comprehensive financial reports.
@@ -168,7 +168,7 @@ export default function Login() {
                 O
               </div>
               <span className="text-xl font-bold tracking-wider text-foreground">
-                ONEMAI
+                OneMAI
               </span>
             </div>
             <h2 className="text-3xl font-bold tracking-tight text-foreground pt-4">

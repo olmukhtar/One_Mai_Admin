@@ -144,7 +144,7 @@ export default function BlogManagement() {
       <div className="space-y-6">
         <PageHeader
           title="Blog & Publishing Manager"
-          subtitle="Create, edit, publish, and distribute content across Onemai web properties."
+          subtitle="Create, edit, publish, and distribute content across OneMAI web properties."
           breadcrumbs={[{ label: "Blog Management" }]}
           rightSlot={
             <Button

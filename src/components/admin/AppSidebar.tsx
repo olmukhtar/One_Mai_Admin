@@ -202,7 +202,7 @@ export function AppSidebar({ className, isMobileOpen, onMobileClose }: AppSideba
             {(!isCollapsed || isMobileOpen) && (
               <div className="flex flex-col truncate">
                 <span className="font-bold text-white text-base tracking-wide leading-tight">
-                  ONEMAI
+                  OneMAI
                 </span>
                 <span className="text-[10px] text-white/70 font-semibold tracking-widest uppercase">
                   Admin Portal

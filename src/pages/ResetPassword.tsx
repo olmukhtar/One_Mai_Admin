@@ -163,7 +163,7 @@ export default function ResetPassword() {
               <div className="h-10 w-10 rounded-xl bg-brand text-white font-extrabold flex items-center justify-center text-xl shadow-md">
                 O
               </div>
-              <span className="text-xl font-bold tracking-wider text-foreground">ONEMAI</span>
+              <span className="text-xl font-bold tracking-wider text-foreground">OneMAI</span>
             </div>
             <h2 className="text-3xl font-bold tracking-tight text-foreground pt-2">
               Reset Password
