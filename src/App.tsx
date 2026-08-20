@@ -34,6 +34,7 @@ import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 
 import CreateAdmin from "./pages/CreateAdmin";
+import Campaigns from "./pages/Campaigns";
 import Resources from "./pages/Resources";
 import BlogManagement from "./pages/BlogManagement";
 import KnowledgeBase from "./pages/KnowledgeBase";
@@ -233,6 +234,14 @@ const App = () => (
               element={
                 <RequireAuth allowedRoles={["admin"]}>
                   <Monify />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/campaigns"
+              element={
+                <RequireAuth allowedRoles={["admin"]}>
+                  <Campaigns />
                 </RequireAuth>
               }
             />

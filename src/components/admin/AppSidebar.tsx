@@ -60,6 +60,12 @@ const mainItems = [
     icon: ClipboardCheck,
     roles: ["Admin", "Account", "admin"],
   },
+  {
+    title: "Campaigns",
+    url: "/campaigns",
+    icon: Target,
+    roles: ["Admin", "admin"],
+  },
 
   {
     title: "Transactions",
