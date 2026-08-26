@@ -156,7 +156,10 @@ export default function AffiliateApplications() {
         return res.json();
       })
       .then((json: ListResponse) => {
-        setRows(json.data || []);
+        const data = [...(json.data || [])].sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+        setRows(data);
       })
       .catch((e: any) => {
         setErr(e?.message || "Failed to load partner applications");
