@@ -252,14 +252,14 @@ export default function EditBlog() {
         const selectedText = text.substring(start, end);
 
         let replacement = "";
-        if (tag === "bold") replacement = `**${selectedText}**`;
-        else if (tag === "italic") replacement = `*${selectedText}*`;
-        else if (tag === "link") replacement = `[${selectedText || "link text"}](url)`;
-        else if (tag === "h1") replacement = `\n# ${selectedText}`;
-        else if (tag === "h2") replacement = `\n## ${selectedText}`;
-        else if (tag === "list") replacement = `\n- ${selectedText}`;
-        else if (tag === "quote") replacement = `\n> ${selectedText}`;
-        else if (tag === "paragraph") replacement = `\n\n${selectedText}`;
+        if (tag === "bold") replacement = `<b>${selectedText}</b>`;
+        else if (tag === "italic") replacement = `<i>${selectedText}</i>`;
+        else if (tag === "link") replacement = `<a href="url">${selectedText || "link text"}</a>`;
+        else if (tag === "h1") replacement = `\n<h1>${selectedText}</h1>`;
+        else if (tag === "h2") replacement = `\n<h2>${selectedText}</h2>`;
+        else if (tag === "list") replacement = `\n<ul>\n  <li>${selectedText}</li>\n</ul>`;
+        else if (tag === "quote") replacement = `\n<blockquote>${selectedText}</blockquote>`;
+        else if (tag === "paragraph") replacement = `\n<p>${selectedText}</p>`;
 
         const newContent = text.substring(0, start) + replacement + text.substring(end);
         updateTextSection(index, newContent);
@@ -268,8 +268,8 @@ export default function EditBlog() {
         setTimeout(() => {
             textarea.focus();
             textarea.setSelectionRange(
-                start + (selectedText ? replacement.length : replacement.indexOf("]") !== -1 ? replacement.indexOf("]") : replacement.length),
-                start + (selectedText ? replacement.length : replacement.indexOf("]") !== -1 ? replacement.indexOf("]") : replacement.length)
+                start + (selectedText ? replacement.length : replacement.indexOf(">") !== -1 ? replacement.indexOf(">") + 1 : replacement.length),
+                start + (selectedText ? replacement.length : replacement.indexOf(">") !== -1 ? replacement.indexOf(">") + 1 : replacement.length)
             );
         }, 0);
     };
