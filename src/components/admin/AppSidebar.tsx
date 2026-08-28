@@ -35,73 +35,77 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const AUTH_STORAGE_KEY = "admin_auth";
 
+// Kept in exact sync with the `allowedRoles` guards in src/App.tsx — this
+// list is what decides whether a link even appears, so a mismatch here
+// means either a role sees a link that 403s when clicked, or a role that
+// legitimately has access never sees the link at all.
 const mainItems = [
   {
     title: "Dashboard",
     url: "/dashboard",
     icon: LayoutDashboard,
-    roles: ["Admin", "Account", "Front Desk", "Customer Support", "Marketing", "admin"],
+    roles: ["admin", "front_desk", "customer_support", "account", "marketing", "affiliate"],
   },
   {
     title: "Users",
     url: "/users",
     icon: Users,
-    roles: ["Admin", "Account", "Front Desk", "Customer Support", "admin"],
+    roles: ["admin"],
   },
   {
     title: "Groups",
     url: "/groups",
     icon: Users2,
-    roles: ["Admin", "Account", "Front Desk", "Customer Support", "admin"],
+    roles: ["admin"],
   },
   {
     title: "Partner Applications",
     url: "/affiliate-applications",
     icon: ClipboardCheck,
-    roles: ["Admin", "Account", "admin"],
+    roles: ["admin", "affiliate"],
   },
   {
     title: "Campaigns",
     url: "/campaigns",
     icon: Target,
-    roles: ["Admin", "admin"],
+    roles: ["admin"],
   },
 
   {
     title: "Transactions",
     url: "/transactions",
     icon: CreditCard,
-    roles: ["Admin", "Account", "Customer Support", "admin"],
+    roles: ["admin"],
   },
   {
     title: "Monify Payouts",
     url: "/monify",
     icon: Wallet,
-    roles: ["Admin", "Account", "admin"],
+    roles: ["admin"],
   },
   {
     title: "Resources",
     url: "/resources",
     icon: Folder,
-    roles: ["Admin", "Account", "Front Desk", "Customer Support", "Marketing", "admin"],
+    roles: ["admin", "marketing"],
   },
   {
     title: "Blog",
     url: "/blog",
     icon: BookOpen,
-    roles: ["Admin", "Account", "Marketing", "admin"],
+    roles: ["admin", "marketing"],
   },
   {
     title: "Knowledge Base",
     url: "/knowledge-base",
     icon: Book,
-    roles: ["Admin", "Account", "Customer Support", "admin"],
+    roles: ["admin", "marketing"],
   },
   {
     title: "Create Admin",
     url: "/create-admin",
     icon: UserPlus,
-    roles: ["Admin", "admin"],
+    roles: ["admin"],
   },
 ];
 
@@ -110,25 +114,25 @@ const reportsItems = [
     title: "Group Contributions",
     url: "/reports/group-contributions",
     icon: TrendingUp,
-    roles: ["Admin", "Account", "Front Desk", "Customer Support", "admin"],
+    roles: ["admin", "front_desk", "customer_support"],
   },
   {
     title: "Withdrawals",
     url: "/reports/withdrawals",
     icon: Wallet,
-    roles: ["Admin", "Account", "Front Desk", "Customer Support", "admin"],
+    roles: ["admin"],
   },
   {
     title: "Members Activity",
     url: "/reports/members-activity",
     icon: Activity,
-    roles: ["Admin", "Account", "Front Desk", "Customer Support", "admin"],
+    roles: ["admin"],
   },
   {
     title: "Circle Progress",
     url: "/reports/circle-progress",
     icon: Target,
-    roles: ["Admin", "Account", "Front Desk", "Customer Support", "admin"],
+    roles: ["admin"],
   },
 ];
 
@@ -137,7 +141,7 @@ const supportItems = [
     title: "Support",
     url: "/support",
     icon: HeadphonesIcon,
-    roles: ["Admin", "Account", "Front Desk", "Customer Support", "admin"],
+    roles: ["admin", "front_desk", "customer_support"],
   },
 ];
 
@@ -169,9 +173,10 @@ export function AppSidebar({ className, isMobileOpen, onMobileClose }: AppSideba
     navigate("/", { replace: true });
   };
 
-  const filteredMainItems = mainItems;
-  const filteredReportsItems = reportsItems;
-  const filteredSupportItems = supportItems;
+  const canSee = (item: { roles: string[] }) => item.roles.includes(rawRole);
+  const filteredMainItems = mainItems.filter(canSee);
+  const filteredReportsItems = reportsItems.filter(canSee);
+  const filteredSupportItems = supportItems.filter(canSee);
 
   const handleNavClick = () => {
     if (onMobileClose) {

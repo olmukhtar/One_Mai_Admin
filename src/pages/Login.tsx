@@ -91,14 +91,21 @@ export default function Login() {
         return;
       }
 
+      // The backend has returned role strings with a hyphen ("front-desk")
+      // instead of the app's canonical underscore spelling ("front_desk"),
+      // which silently failed every allowedRoles check and sent that admin
+      // straight to /unauthorized on every route. Normalize at the boundary
+      // so a backend spelling drift can't do that again.
+      const normalizedRole = admin?.role ? String(admin.role).trim().replace(/-/g, "_") : admin?.role;
+
       login({
         token,
-        role: admin?.role,
+        role: normalizedRole,
         user: {
           id: admin?.id,
           name: admin?.name,
           email: admin?.email,
-          role: admin?.role
+          role: normalizedRole
         },
       }, remember);
 

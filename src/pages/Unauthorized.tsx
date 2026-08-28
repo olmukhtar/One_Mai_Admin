@@ -1,10 +1,17 @@
 import { useNavigate } from "react-router-dom";
-import { ShieldAlert, ArrowLeft, LayoutDashboard } from "lucide-react";
+import { ShieldAlert, ArrowLeft, LayoutDashboard, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Unauthorized() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login", { replace: true });
+  };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
@@ -44,6 +51,14 @@ export default function Unauthorized() {
                 <LayoutDashboard className="h-3.5 w-3.5" /> Go to Dashboard
               </Button>
             </div>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="mx-auto flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-rose-600 dark:hover:text-rose-500 transition-colors"
+            >
+              <LogOut className="h-3.5 w-3.5" /> Log out
+            </button>
           </CardContent>
         </Card>
       </div>
