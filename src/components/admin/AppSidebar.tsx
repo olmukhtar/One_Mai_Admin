@@ -35,10 +35,8 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const AUTH_STORAGE_KEY = "admin_auth";
 
-// Kept in exact sync with the `allowedRoles` guards in src/App.tsx — this
-// list is what decides whether a link even appears, so a mismatch here
-// means either a role sees a link that 403s when clicked, or a role that
-// legitimately has access never sees the link at all.
+// `roles` is unused now that canSee() always returns true (no role-based
+// restriction) — kept only as metadata, not enforced.
 const mainItems = [
   {
     title: "Dashboard",

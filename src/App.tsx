@@ -99,7 +99,7 @@ function InactivityMonitor({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function RequireAuth({ children }: { children: JSX.Element; allowedRoles?: string[] }) {
+function RequireAuth({ children }: { children: JSX.Element }) {
   const location = useLocation();
   const { isAuthenticated } = useAuth();
   if (!isAuthenticated) {
@@ -135,7 +135,7 @@ const App = () => (
             <Route
               path="/dashboard"
               element={
-                <RequireAuth allowedRoles={["admin", "front_desk", "customer_support", "account", "marketing", "affiliate"]}>
+                <RequireAuth>
                   <Dashboard />
                 </RequireAuth>
               }
@@ -143,7 +143,7 @@ const App = () => (
             <Route
               path="/users"
               element={
-                <RequireAuth allowedRoles={["admin"]}>
+                <RequireAuth>
                   <Users />
                 </RequireAuth>
               }
@@ -151,7 +151,7 @@ const App = () => (
             <Route
               path="/users/:id"
               element={
-                <RequireAuth allowedRoles={["admin"]}>
+                <RequireAuth>
                   <UserDetails />
                 </RequireAuth>
               }
@@ -159,7 +159,7 @@ const App = () => (
             <Route
               path="/profile"
               element={
-                <RequireAuth allowedRoles={["admin", "front_desk", "customer_support", "account", "marketing", "affiliate"]}>
+                <RequireAuth>
                   <Profile />
                 </RequireAuth>
               }
@@ -167,7 +167,7 @@ const App = () => (
             <Route
               path="/settings"
               element={
-                <RequireAuth allowedRoles={["admin"]}>
+                <RequireAuth>
                   <Settings />
                 </RequireAuth>
               }
@@ -175,7 +175,7 @@ const App = () => (
             <Route
               path="/notifications"
               element={
-                <RequireAuth allowedRoles={["admin", "front_desk", "customer_support", "account", "marketing"]}>
+                <RequireAuth>
                   <Notifications />
                 </RequireAuth>
               }
@@ -183,7 +183,7 @@ const App = () => (
             <Route
               path="/affiliate-applications"
               element={
-                <RequireAuth allowedRoles={["admin", "affiliate"]}>
+                <RequireAuth>
                   <AffiliateApplications />
                 </RequireAuth>
               }
@@ -191,7 +191,7 @@ const App = () => (
             <Route
               path="/affiliate-applications/:id"
               element={
-                <RequireAuth allowedRoles={["admin"]}>
+                <RequireAuth>
                   <AffiliateApplicationDetail />
                 </RequireAuth>
               }
@@ -199,7 +199,7 @@ const App = () => (
             <Route
               path="/groups"
               element={
-                <RequireAuth allowedRoles={["admin"]}>
+                <RequireAuth>
                   <Groups />
                 </RequireAuth>
               }
@@ -207,7 +207,7 @@ const App = () => (
             <Route
               path="/groups/:id"
               element={
-                <RequireAuth allowedRoles={["admin"]}>
+                <RequireAuth>
                   <GroupDetails />
                 </RequireAuth>
               }
@@ -215,7 +215,7 @@ const App = () => (
             <Route
               path="/circle-management"
               element={
-                <RequireAuth allowedRoles={["admin"]}>
+                <RequireAuth>
                   <CircleManagement />
                 </RequireAuth>
               }
@@ -223,7 +223,7 @@ const App = () => (
             <Route
               path="/transactions"
               element={
-                <RequireAuth allowedRoles={["admin"]}>
+                <RequireAuth>
                   <Transactions />
                 </RequireAuth>
               }
@@ -231,7 +231,7 @@ const App = () => (
             <Route
               path="/monify"
               element={
-                <RequireAuth allowedRoles={["admin"]}>
+                <RequireAuth>
                   <Monify />
                 </RequireAuth>
               }
@@ -239,7 +239,7 @@ const App = () => (
             <Route
               path="/campaigns"
               element={
-                <RequireAuth allowedRoles={["admin"]}>
+                <RequireAuth>
                   <Campaigns />
                 </RequireAuth>
               }
@@ -247,7 +247,7 @@ const App = () => (
             <Route
               path="/resources"
               element={
-                <RequireAuth allowedRoles={["admin", "marketing"]}>
+                <RequireAuth>
                   <Resources />
                 </RequireAuth>
               }
@@ -255,7 +255,7 @@ const App = () => (
             <Route
               path="/blog"
               element={
-                <RequireAuth allowedRoles={["admin", "marketing"]}>
+                <RequireAuth>
                   <BlogManagement />
                 </RequireAuth>
               }
@@ -263,7 +263,7 @@ const App = () => (
             <Route
               path="/blog/create"
               element={
-                <RequireAuth allowedRoles={["admin", "marketing"]}>
+                <RequireAuth>
                   <CreateBlog />
                 </RequireAuth>
               }
@@ -271,7 +271,7 @@ const App = () => (
             <Route
               path="/blog/edit/:id"
               element={
-                <RequireAuth allowedRoles={["admin", "marketing"]}>
+                <RequireAuth>
                   <EditBlog />
                 </RequireAuth>
               }
@@ -279,7 +279,7 @@ const App = () => (
             <Route
               path="/reports/group-contributions"
               element={
-                <RequireAuth allowedRoles={["admin", "front_desk", "customer_support"]}>
+                <RequireAuth>
                   <GroupContributions />
                 </RequireAuth>
               }
@@ -287,7 +287,7 @@ const App = () => (
             <Route
               path="/create-admin"
               element={
-                <RequireAuth allowedRoles={["admin"]}>
+                <RequireAuth>
                   <CreateAdmin />
                 </RequireAuth>
               }
@@ -295,7 +295,7 @@ const App = () => (
             <Route
               path="/reports/withdrawals"
               element={
-                <RequireAuth allowedRoles={["admin"]}>
+                <RequireAuth>
                   <Withdrawals />
                 </RequireAuth>
               }
@@ -303,7 +303,7 @@ const App = () => (
             <Route
               path="/reports/members-activity"
               element={
-                <RequireAuth allowedRoles={["admin"]}>
+                <RequireAuth>
                   <MembersActivity />
                 </RequireAuth>
               }
@@ -311,7 +311,7 @@ const App = () => (
             <Route
               path="/reports/circle-progress"
               element={
-                <RequireAuth allowedRoles={["admin"]}>
+                <RequireAuth>
                   <CircleProgress />
                 </RequireAuth>
               }
@@ -319,7 +319,7 @@ const App = () => (
             <Route
               path="/support"
               element={
-                <RequireAuth allowedRoles={["admin", "front_desk", "customer_support"]}>
+                <RequireAuth>
                   <Support />
                 </RequireAuth>
               }
@@ -327,7 +327,7 @@ const App = () => (
             <Route
               path="/knowledge-base"
               element={
-                <RequireAuth allowedRoles={["admin", "marketing"]}>
+                <RequireAuth>
                   <KnowledgeBase />
                 </RequireAuth>
               }
