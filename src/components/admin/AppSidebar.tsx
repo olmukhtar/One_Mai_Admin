@@ -173,7 +173,7 @@ export function AppSidebar({ className, isMobileOpen, onMobileClose }: AppSideba
     navigate("/", { replace: true });
   };
 
-  const canSee = (item: { roles: string[] }) => item.roles.includes(rawRole);
+  const canSee = (_item: { roles: string[] }) => true;
   const filteredMainItems = mainItems.filter(canSee);
   const filteredReportsItems = reportsItems.filter(canSee);
   const filteredSupportItems = supportItems.filter(canSee);

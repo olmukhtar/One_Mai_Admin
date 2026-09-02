@@ -99,15 +99,14 @@ function InactivityMonitor({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function RequireAuth({ children, allowedRoles }: { children: JSX.Element; allowedRoles?: string[] }) {
+function RequireAuth({ children }: { children: JSX.Element; allowedRoles?: string[] }) {
   const location = useLocation();
-  const { isAuthenticated, role } = useAuth();
+  const { isAuthenticated } = useAuth();
   if (!isAuthenticated) {
     return <Navigate to="/" replace state={{ from: location.pathname }} />;
   }
-  if (allowedRoles && (!role || !allowedRoles.includes(role))) {
-    return <Navigate to="/unauthorized" replace />;
-  }
+  // Role-based route gating removed: every authenticated admin user has
+  // access to every page.
   return children;
 }
 
