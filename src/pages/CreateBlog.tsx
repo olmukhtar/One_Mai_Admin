@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, Bold, Italic, Link as LinkIcon, Heading1, Heading2, List, Quote, ArrowLeft, Image as ImageIcon, FileText, Globe } from "lucide-react";
+import { Plus, Trash2, Bold, Italic, Link as LinkIcon, Heading1, Heading2, List, Quote, ArrowLeft, Image as ImageIcon, Globe, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "@/lib/api";
 import { API_BASE_URL } from "@/lib/constants";
+import { renderCustomMarkup } from "@/lib/customMarkup";
 import {
     Select,
     SelectContent,
@@ -19,9 +20,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 
-type Section =
-    | { id: string; type: 'text'; content: string }
-    | { id: string; type: 'image'; file: File | null; preview: string };
+type Section = { id: string; content: string };
 
 export default function CreateBlog() {
     const { toast } = useToast();
@@ -31,7 +30,7 @@ export default function CreateBlog() {
         domain: ".com",
         featuredImage: null as File | null,
         sections: [
-            { id: Math.random().toString(36).substr(2, 9), type: 'text' as const, content: "" }
+            { id: Math.random().toString(36).substr(2, 9), content: "" }
         ] as Section[],
     });
     const [featuredImagePreview, setFeaturedImagePreview] = useState<string>("");
@@ -50,24 +49,6 @@ export default function CreateBlog() {
         }
     };
 
-    // Handle inline image selection
-    const handleSectionImageChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const newSections = [...formData.sections];
-            const section = newSections[index];
-            if (section.type === 'image') {
-                section.file = file;
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                    section.preview = reader.result as string;
-                    setFormData({ ...formData, sections: newSections });
-                };
-                reader.readAsDataURL(file);
-            }
-        }
-    };
-
     // Create post
     const handleCreatePost = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -77,30 +58,12 @@ export default function CreateBlog() {
             formDataToSend.append("title", formData.title);
             formDataToSend.append("domain", formData.domain);
 
-            // Construct content from sections
-            // For now, we'll join text sections with double newlines
-            // We might need a special way to represent images in the content string if the backend 
-            // doesn't natively support structured sections.
-            let combinedContent = "";
-            let imageIndex = 0;
+            const combinedContent = formData.sections
+                .map((section) => section.content.trim())
+                .filter(Boolean)
+                .join("\n\n");
 
-            formData.sections.forEach((section) => {
-                if (section.type === 'text') {
-                    if (section.content.trim()) {
-                        combinedContent += section.content + "\n\n";
-                    }
-                } else if (section.type === 'image') {
-                    if (section.file) {
-                        // Append inline images with unique names
-                        formDataToSend.append(`inline_image_${imageIndex}`, section.file);
-                        // Add a placeholder in the content
-                        combinedContent += `[IMAGE_PLACEHOLDER_${imageIndex}]\n\n`;
-                        imageIndex++;
-                    }
-                }
-            });
-
-            formDataToSend.append("content", combinedContent.trim());
+            formDataToSend.append("content", combinedContent);
 
             if (formData.featuredImage) {
                 formDataToSend.append("image", formData.featuredImage);
@@ -138,20 +101,7 @@ export default function CreateBlog() {
             ...formData,
             sections: [...formData.sections, {
                 id: Math.random().toString(36).substr(2, 9),
-                type: 'text',
                 content: ""
-            }]
-        });
-    };
-
-    const addImageSection = () => {
-        setFormData({
-            ...formData,
-            sections: [...formData.sections, {
-                id: Math.random().toString(36).substr(2, 9),
-                type: 'image',
-                file: null,
-                preview: ""
             }]
         });
     };
@@ -168,14 +118,11 @@ export default function CreateBlog() {
 
     const updateTextSection = (index: number, value: string) => {
         const newSections = [...formData.sections];
-        const section = newSections[index];
-        if (section.type === 'text') {
-            section.content = value;
-            setFormData({
-                ...formData,
-                sections: newSections
-            });
-        }
+        newSections[index] = { ...newSections[index], content: value };
+        setFormData({
+            ...formData,
+            sections: newSections
+        });
     };
 
     const applyFormatting = (tag: string, id: string, index: number) => {
@@ -188,14 +135,13 @@ export default function CreateBlog() {
         const selectedText = text.substring(start, end);
 
         let replacement = "";
-        if (tag === "bold") replacement = `<b>${selectedText}</b>`;
-        else if (tag === "italic") replacement = `<i>${selectedText}</i>`;
-        else if (tag === "link") replacement = `<a href="url">${selectedText || "link text"}</a>`;
-        else if (tag === "h1") replacement = `\n<h1>${selectedText}</h1>`;
-        else if (tag === "h2") replacement = `\n<h2>${selectedText}</h2>`;
-        else if (tag === "list") replacement = `\n<ul>\n  <li>${selectedText}</li>\n</ul>`;
-        else if (tag === "quote") replacement = `\n<blockquote>${selectedText}</blockquote>`;
-        else if (tag === "paragraph") replacement = `\n<p>${selectedText}</p>`;
+        if (tag === "bold") replacement = `**${selectedText || "bold text"}**`;
+        else if (tag === "italic") replacement = `*${selectedText || "italic text"}*`;
+        else if (tag === "link") replacement = `[${selectedText || "link text"}](url)`;
+        else if (tag === "h1") replacement = `\n# ${selectedText || "Heading"}`;
+        else if (tag === "h2") replacement = `\n## ${selectedText || "Subheading"}`;
+        else if (tag === "list") replacement = `\n- ${selectedText || "List item"}`;
+        else if (tag === "quote") replacement = `\n> ${selectedText || "Quote"}`;
 
         const newContent = text.substring(0, start) + replacement + text.substring(end);
         updateTextSection(index, newContent);
@@ -204,8 +150,8 @@ export default function CreateBlog() {
         setTimeout(() => {
             textarea.focus();
             textarea.setSelectionRange(
-                start + (selectedText ? replacement.length : replacement.indexOf(">") !== -1 ? replacement.indexOf(">") + 1 : replacement.length),
-                start + (selectedText ? replacement.length : replacement.indexOf(">") !== -1 ? replacement.indexOf(">") + 1 : replacement.length)
+                start + replacement.length,
+                start + replacement.length
             );
         }, 0);
     };
@@ -321,91 +267,84 @@ export default function CreateBlog() {
                                 {formData.sections.map((section, index) => (
                                     <div key={section.id} className="relative group/section space-y-4 p-4 border border-slate-100 rounded-xl bg-slate-50/30">
                                         <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-2">
-                                                <div className="p-1.5 bg-white rounded-md border border-slate-100 shadow-sm">
-                                                    {section.type === 'text' ? <FileText className="h-4 w-4 text-blue-500" /> : <ImageIcon className="h-4 w-4 text-emerald-500" />}
-                                                </div>
-                                                <span className="text-sm font-medium text-slate-600">
-                                                    Section {index + 1}: {section.type === 'text' ? 'Text' : 'Image'}
-                                                </span>
-                                            </div>
+                                            <span className="text-sm font-medium text-slate-600">
+                                                Section {index + 1}
+                                            </span>
 
                                             <div className="flex items-center gap-2">
-                                                {section.type === 'text' && (
-                                                    <div className="flex gap-1 bg-white p-1 rounded-lg border border-slate-100 shadow-sm">
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() => applyFormatting("bold", `create-block-${index}`, index)}
-                                                            className="h-8 w-8 p-0"
-                                                            title="Bold"
-                                                        >
-                                                            <Bold className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() => applyFormatting("italic", `create-block-${index}`, index)}
-                                                            className="h-8 w-8 p-0"
-                                                            title="Italic"
-                                                        >
-                                                            <Italic className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() => applyFormatting("link", `create-block-${index}`, index)}
-                                                            className="h-8 w-8 p-0"
-                                                            title="Insert Link"
-                                                        >
-                                                            <LinkIcon className="h-4 w-4" />
-                                                        </Button>
-                                                        <div className="w-px h-5 bg-slate-200 mx-1 self-center" />
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() => applyFormatting("h1", `create-block-${index}`, index)}
-                                                            className="h-8 w-8 p-0"
-                                                            title="Heading 1"
-                                                        >
-                                                            <Heading1 className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() => applyFormatting("h2", `create-block-${index}`, index)}
-                                                            className="h-8 w-8 p-0"
-                                                            title="Heading 2"
-                                                        >
-                                                            <Heading2 className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() => applyFormatting("list", `create-block-${index}`, index)}
-                                                            className="h-8 w-8 p-0"
-                                                            title="List"
-                                                        >
-                                                            <List className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() => applyFormatting("quote", `create-block-${index}`, index)}
-                                                            className="h-8 w-8 p-0"
-                                                            title="Quote"
-                                                        >
-                                                            <Quote className="h-4 w-4" />
-                                                        </Button>
-                                                    </div>
-                                                )}
+                                                <div className="flex gap-1 bg-white p-1 rounded-lg border border-slate-100 shadow-sm">
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => applyFormatting("bold", `create-block-${index}`, index)}
+                                                        className="h-8 w-8 p-0"
+                                                        title="Bold"
+                                                    >
+                                                        <Bold className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => applyFormatting("italic", `create-block-${index}`, index)}
+                                                        className="h-8 w-8 p-0"
+                                                        title="Italic"
+                                                    >
+                                                        <Italic className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => applyFormatting("link", `create-block-${index}`, index)}
+                                                        className="h-8 w-8 p-0"
+                                                        title="Insert Link"
+                                                    >
+                                                        <LinkIcon className="h-4 w-4" />
+                                                    </Button>
+                                                    <div className="w-px h-5 bg-slate-200 mx-1 self-center" />
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => applyFormatting("h1", `create-block-${index}`, index)}
+                                                        className="h-8 w-8 p-0"
+                                                        title="Heading 1"
+                                                    >
+                                                        <Heading1 className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => applyFormatting("h2", `create-block-${index}`, index)}
+                                                        className="h-8 w-8 p-0"
+                                                        title="Heading 2"
+                                                    >
+                                                        <Heading2 className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => applyFormatting("list", `create-block-${index}`, index)}
+                                                        className="h-8 w-8 p-0"
+                                                        title="List"
+                                                    >
+                                                        <List className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => applyFormatting("quote", `create-block-${index}`, index)}
+                                                        className="h-8 w-8 p-0"
+                                                        title="Quote"
+                                                    >
+                                                        <Quote className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
 
                                                 {formData.sections.length > 1 && (
                                                     <Button
@@ -422,79 +361,39 @@ export default function CreateBlog() {
                                             </div>
                                         </div>
 
-                                        {section.type === 'text' ? (
-                                            <Textarea
-                                                id={`create-block-${index}`}
-                                                value={section.content}
-                                                onChange={(e) => updateTextSection(index, e.target.value)}
-                                                placeholder={`Enter text for section ${index + 1}...`}
-                                                className="min-h-[120px] bg-white resize-none"
-                                                required={index === 0}
-                                            />
-                                        ) : (
-                                            <div
-                                                className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors bg-white ${section.preview ? 'border-blue-200' : 'border-slate-200'
-                                                    }`}
-                                            >
-                                                {section.preview ? (
-                                                    <div className="relative w-full max-w-md mx-auto h-48 bg-slate-100 rounded-lg overflow-hidden group">
-                                                        <img
-                                                            src={section.preview}
-                                                            alt="Preview"
-                                                            className="w-full h-full object-contain"
-                                                        />
-                                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                            <Button
-                                                                type="button"
-                                                                variant="secondary"
-                                                                size="sm"
-                                                                onClick={() => document.getElementById(`section-image-${index}`)?.click()}
-                                                            >
-                                                                Change Image
-                                                            </Button>
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <div
-                                                        className="cursor-pointer"
-                                                        onClick={() => document.getElementById(`section-image-${index}`)?.click()}
-                                                    >
-                                                        <Plus className="h-8 w-8 text-slate-400 mx-auto mb-2" />
-                                                        <p className="text-sm text-slate-600 font-medium">Click to upload section image</p>
-                                                    </div>
-                                                )}
-                                                <Input
-                                                    id={`section-image-${index}`}
-                                                    type="file"
-                                                    accept="image/*"
-                                                    onChange={(e) => handleSectionImageChange(index, e)}
-                                                    className="hidden"
+                                        <Textarea
+                                            id={`create-block-${index}`}
+                                            value={section.content}
+                                            onChange={(e) => updateTextSection(index, e.target.value)}
+                                            placeholder={`Enter text for section ${index + 1}...`}
+                                            className="min-h-[120px] bg-white resize-none font-mono text-sm"
+                                            required={index === 0}
+                                        />
+
+                                        {section.content.trim() && (
+                                            <div className="space-y-1.5">
+                                                <div className="flex items-center gap-1.5 text-xs font-medium text-slate-400">
+                                                    <Eye className="h-3.5 w-3.5" />
+                                                    Preview
+                                                </div>
+                                                <div
+                                                    className="prose prose-sm max-w-none bg-white rounded-lg border border-slate-100 p-3 [&_h1]:text-xl [&_h1]:font-bold [&_h2]:text-lg [&_h2]:font-bold [&_ul]:list-disc [&_ul]:pl-5 [&_blockquote]:border-l-2 [&_blockquote]:border-slate-300 [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:text-slate-500 [&_a]:text-blue-600 [&_a]:underline"
+                                                    dangerouslySetInnerHTML={{ __html: renderCustomMarkup(section.content) }}
                                                 />
                                             </div>
                                         )}
                                     </div>
                                 ))}
 
-                                <div className="grid grid-cols-2 gap-4">
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={addTextSection}
-                                        className="border-dashed border-slate-300 py-6 text-slate-500 hover:text-[#1766a4] hover:border-[#1766a4] hover:bg-blue-50/30"
-                                    >
-                                        <Plus className="h-4 w-4 mr-2" />
-                                        Add Text Paragraph
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={addImageSection}
-                                        className="border-dashed border-slate-300 py-6 text-slate-500 hover:text-emerald-600 hover:border-emerald-600 hover:bg-emerald-50/30"
-                                    >
-                                        <ImageIcon className="h-4 w-4 mr-2" />
-                                        Add Image Section
-                                    </Button>
-                                </div>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={addTextSection}
+                                    className="w-full border-dashed border-slate-300 py-6 text-slate-500 hover:text-[#1766a4] hover:border-[#1766a4] hover:bg-blue-50/30"
+                                >
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    Add Text Paragraph
+                                </Button>
                             </div>
 
                             <div className="flex gap-4 pt-6 border-t border-slate-100">
