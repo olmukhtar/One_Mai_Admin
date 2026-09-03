@@ -36,9 +36,10 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const AUTH_STORAGE_KEY = "admin_auth";
 
-// `roles` is unused now that canSee() no longer gates on it — every item
-// is visible to every role, with a single named exception (Create Admin,
-// hidden from the support role) enforced directly by url below.
+// `roles` is unused — every item is visible to every role except support
+// (customer_support), which is restricted to a fixed allowlist below.
+// Every other role sees everything.
+const SUPPORT_ALLOWED_URLS = ["/users", "/groups", "/support", "/knowledge-base"];
 const mainItems = [
   {
     title: "Dashboard",
@@ -180,7 +181,7 @@ export function AppSidebar({ className, isMobileOpen, onMobileClose }: AppSideba
   };
 
   const canSee = (item: { url: string }) =>
-    !(item.url === "/create-admin" && rawRole === "customer_support");
+    rawRole === "customer_support" ? SUPPORT_ALLOWED_URLS.includes(item.url) : true;
   const filteredMainItems = mainItems.filter(canSee);
   const filteredReportsItems = reportsItems.filter(canSee);
   const filteredSupportItems = supportItems.filter(canSee);
