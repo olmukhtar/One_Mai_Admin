@@ -37,6 +37,7 @@ import CreateAdmin from "./pages/CreateAdmin";
 import Campaigns from "./pages/Campaigns";
 import Resources from "./pages/Resources";
 import BlogManagement from "./pages/BlogManagement";
+import MediaLibrary from "./pages/MediaLibrary";
 import KnowledgeBase from "./pages/KnowledgeBase";
 import CreateBlog from "./pages/CreateBlog";
 import EditBlog from "./pages/EditBlog";
@@ -257,6 +258,14 @@ const App = () => (
               element={
                 <RequireAuth>
                   <BlogManagement />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/media"
+              element={
+                <RequireAuth>
+                  <MediaLibrary />
                 </RequireAuth>
               }
             />

@@ -24,6 +24,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   X,
+  Image as ImageIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -35,8 +36,9 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const AUTH_STORAGE_KEY = "admin_auth";
 
-// `roles` is unused now that canSee() always returns true (no role-based
-// restriction) — kept only as metadata, not enforced.
+// `roles` is unused now that canSee() no longer gates on it — every item
+// is visible to every role, with a single named exception (Create Admin,
+// hidden from the support role) enforced directly by url below.
 const mainItems = [
   {
     title: "Dashboard",
@@ -91,6 +93,12 @@ const mainItems = [
     title: "Blog",
     url: "/blog",
     icon: BookOpen,
+    roles: ["admin", "marketing"],
+  },
+  {
+    title: "Media Library",
+    url: "/media",
+    icon: ImageIcon,
     roles: ["admin", "marketing"],
   },
   {
@@ -171,7 +179,8 @@ export function AppSidebar({ className, isMobileOpen, onMobileClose }: AppSideba
     navigate("/", { replace: true });
   };
 
-  const canSee = (_item: { roles: string[] }) => true;
+  const canSee = (item: { url: string }) =>
+    !(item.url === "/create-admin" && rawRole === "customer_support");
   const filteredMainItems = mainItems.filter(canSee);
   const filteredReportsItems = reportsItems.filter(canSee);
   const filteredSupportItems = supportItems.filter(canSee);
