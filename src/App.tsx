@@ -102,20 +102,35 @@ function InactivityMonitor({ children }: { children: React.ReactNode }) {
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const location = useLocation();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, role } = useAuth();
   if (!isAuthenticated) {
     return <Navigate to="/" replace state={{ from: location.pathname }} />;
   }
-  // Role-based route gating removed: every authenticated admin user has
-  // access to every page.
+
+  if (role === "customer_support" || role === "support") {
+    const path = location.pathname;
+    const isAllowed = 
+      path === "/users" || path.startsWith("/users/") ||
+      path === "/groups" || path.startsWith("/groups/") ||
+      path === "/support" || path.startsWith("/support/") ||
+      path === "/knowledge-base" || path.startsWith("/knowledge-base/") ||
+      path === "/profile" || path === "/settings" || path === "/notifications" || path === "/unauthorized";
+
+    if (!isAllowed) {
+      return <Navigate to="/users" replace />;
+    }
+  }
+
   return children;
 }
 
-
-
 function RootLogin() {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />;
+  const { isAuthenticated, role } = useAuth();
+  if (isAuthenticated) {
+    if (role === "customer_support" || role === "support") return <Navigate to="/users" replace />;
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <Login />;
 }
 
 const App = () => (

@@ -18,6 +18,7 @@ import { StatusBadge } from "@/components/admin/StatusBadge";
 
 import { apiFetch } from "@/lib/api";
 import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/constants";
+import { excerptFromContent } from "@/lib/postContent";
 
 function resolveImageUrl(path?: string) {
   if (!path) return "";
@@ -30,7 +31,7 @@ interface BlogPost {
   image: string;
   title: string;
   domain?: string;
-  content: string;
+  content: unknown;
   status: "published" | "draft";
   createdAt: string;
   updatedAt: string;
@@ -268,7 +269,7 @@ export default function BlogManagement() {
 
                 <CardContent className="px-5 pt-0">
                   <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">
-                    {post.content}
+                    {excerptFromContent(post.content)}
                   </p>
                 </CardContent>
 
@@ -337,7 +338,7 @@ export default function BlogManagement() {
                 </div>
               )}
 
-              <p className="whitespace-pre-wrap">{selectedPost?.content}</p>
+              <p className="whitespace-pre-wrap">{excerptFromContent(selectedPost?.content)}</p>
             </div>
 
             <DialogFooter className="border-t border-border/60 pt-3">

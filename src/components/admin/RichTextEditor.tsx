@@ -1,23 +1,22 @@
 import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Bold, Italic, Link as LinkIcon, Heading1, Heading2, List, Quote } from "lucide-react";
-import { renderCustomMarkup } from "@/lib/customMarkup";
-import { htmlToCustomMarkup } from "@/lib/richTextSerializer";
 
 interface RichTextEditorProps {
     id?: string;
+    /** Real HTML (e.g. "<p>Stay open to GOD</p>") — the backend's post
+     *  content blocks store this directly, unstripped. */
     value: string;
-    onChange: (value: string) => void;
+    onChange: (html: string) => void;
     placeholder?: string;
     minHeight?: string;
 }
 
 /**
  * A true WYSIWYG box: bold/italic/headings/lists/quotes/links show as
- * actual formatting while you type, not raw "**"/"#" characters. Backed by
- * contentEditable + execCommand — text still round-trips to the same
- * custom markup string (see customMarkup.ts) for storage, since the
- * backend strips real HTML tags on save.
+ * actual formatting while you type, not raw markup characters. Backed by
+ * contentEditable + execCommand. `value`/`onChange` are plain HTML in and
+ * out — one editor instance per `content` block (see CreateBlog/EditBlog).
  *
  * Not natively form-validatable (contentEditable has no `required`
  * attribute) — callers should check for empty content themselves before
@@ -25,7 +24,7 @@ interface RichTextEditorProps {
  */
 export function RichTextEditor({ id, value, onChange, placeholder, minHeight = "420px" }: RichTextEditorProps) {
     const editorRef = useRef<HTMLDivElement>(null);
-    const lastSerialized = useRef<string>("");
+    const lastEmitted = useRef<string>("");
 
     useEffect(() => {
         try {
@@ -40,17 +39,17 @@ export function RichTextEditor({ id, value, onChange, placeholder, minHeight = "
         if (!el) return;
         // Only touch the DOM when the incoming value didn't come from our
         // own last emit — otherwise every keystroke would reset the caret.
-        if (value === lastSerialized.current) return;
-        el.innerHTML = renderCustomMarkup(value);
-        lastSerialized.current = value;
+        if (value === lastEmitted.current) return;
+        el.innerHTML = value || "";
+        lastEmitted.current = value || "";
     }, [value]);
 
     const emitChange = () => {
         const el = editorRef.current;
         if (!el) return;
-        const markup = htmlToCustomMarkup(el);
-        lastSerialized.current = markup;
-        onChange(markup);
+        const html = el.innerHTML;
+        lastEmitted.current = html;
+        onChange(html);
     };
 
     const exec = (command: string, arg?: string) => {

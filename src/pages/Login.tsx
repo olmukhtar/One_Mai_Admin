@@ -111,8 +111,14 @@ export default function Login() {
 
       const params = new URLSearchParams(location.search);
       const fromParam = params.get("from");
+      
+      let defaultPath = "/dashboard";
+      if (normalizedRole === "customer_support" || normalizedRole === "support") {
+        defaultPath = "/users";
+      }
+
       const redirectPath =
-        state?.from || (fromParam ? decodeURIComponent(fromParam) : "/dashboard");
+        state?.from || (fromParam ? decodeURIComponent(fromParam) : defaultPath);
 
       navigate(redirectPath, { replace: true });
     } catch (err) {

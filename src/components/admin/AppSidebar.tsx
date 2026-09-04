@@ -180,8 +180,9 @@ export function AppSidebar({ className, isMobileOpen, onMobileClose }: AppSideba
     navigate("/", { replace: true });
   };
 
+  const isSupportRole = rawRole === "customer_support" || rawRole === "support";
   const canSee = (item: { url: string }) =>
-    rawRole === "customer_support" ? SUPPORT_ALLOWED_URLS.includes(item.url) : true;
+    isSupportRole ? SUPPORT_ALLOWED_URLS.includes(item.url) : true;
   const filteredMainItems = mainItems.filter(canSee);
   const filteredReportsItems = reportsItems.filter(canSee);
   const filteredSupportItems = supportItems.filter(canSee);
