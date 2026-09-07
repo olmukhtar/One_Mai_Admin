@@ -1,6 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Bold, Italic, Link as LinkIcon, Heading1, Heading2, List, Quote } from "lucide-react";
+import { Bold, Italic, Link as LinkIcon, Heading1, Heading2, List, Quote, Image as ImageIcon } from "lucide-react";
 
 interface RichTextEditorProps {
     id?: string;
@@ -10,6 +10,9 @@ interface RichTextEditorProps {
     onChange: (html: string) => void;
     placeholder?: string;
     minHeight?: string;
+    /** Opens the media picker and resolves with the chosen image URL, or
+     *  null if the author cancelled. Omit to hide the insert-image button. */
+    onPickImage?: () => Promise<string | null>;
 }
 
 /**
@@ -22,9 +25,12 @@ interface RichTextEditorProps {
  * attribute) — callers should check for empty content themselves before
  * submitting.
  */
-export function RichTextEditor({ id, value, onChange, placeholder, minHeight = "420px" }: RichTextEditorProps) {
+export function RichTextEditor({ id, value, onChange, placeholder, minHeight = "420px", onPickImage }: RichTextEditorProps) {
     const editorRef = useRef<HTMLDivElement>(null);
     const lastEmitted = useRef<string>("");
+    // The caret is lost while the media dialog has focus, so remember where
+    // it was — that position is where the image has to land.
+    const savedRange = useRef<Range | null>(null);
 
     useEffect(() => {
         try {
@@ -50,6 +56,54 @@ export function RichTextEditor({ id, value, onChange, placeholder, minHeight = "
         const html = el.innerHTML;
         lastEmitted.current = html;
         onChange(html);
+    };
+
+    const rememberCaret = useCallback(() => {
+        const selection = window.getSelection();
+        if (!selection?.rangeCount) return;
+
+        const range = selection.getRangeAt(0);
+        if (editorRef.current?.contains(range.commonAncestorContainer)) {
+            savedRange.current = range.cloneRange();
+        }
+    }, []);
+
+    const restoreCaret = () => {
+        const el = editorRef.current;
+        if (!el) return;
+        el.focus();
+
+        const selection = window.getSelection();
+        if (!selection) return;
+
+        selection.removeAllRanges();
+        if (savedRange.current && el.contains(savedRange.current.commonAncestorContainer)) {
+            selection.addRange(savedRange.current);
+            return;
+        }
+        // No usable caret (never focused, or content replaced) — append.
+        const end = document.createRange();
+        end.selectNodeContents(el);
+        end.collapse(false);
+        selection.addRange(end);
+    };
+
+    const handleInsertImage = async () => {
+        if (!onPickImage) return;
+
+        rememberCaret();
+        const url = await onPickImage();
+        if (!url) return;
+
+        restoreCaret();
+        // Its own paragraph, so postContent's splitter emits a standalone
+        // `image` block rather than burying the <img> inside a text block.
+        document.execCommand(
+            "insertHTML",
+            false,
+            `<p><img src="${url.replace(/"/g, "&quot;")}" alt="" /></p>`,
+        );
+        emitChange();
     };
 
     const exec = (command: string, arg?: string) => {
@@ -78,6 +132,11 @@ export function RichTextEditor({ id, value, onChange, placeholder, minHeight = "
                 <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" title="Insert Link" onClick={handleLink}>
                     <LinkIcon className="h-4 w-4" />
                 </Button>
+                {onPickImage && (
+                    <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" title="Insert Image Here" onClick={handleInsertImage}>
+                        <ImageIcon className="h-4 w-4" />
+                    </Button>
+                )}
                 <div className="w-px h-5 bg-slate-200 mx-1 self-center" />
                 <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" title="Heading 1" onClick={() => exec("formatBlock", "<h1>")}>
                     <Heading1 className="h-4 w-4" />
@@ -104,7 +163,9 @@ export function RichTextEditor({ id, value, onChange, placeholder, minHeight = "
                     suppressContentEditableWarning
                     onInput={emitChange}
                     onBlur={emitChange}
-                    className="prose prose-sm max-w-none w-full rounded-md border border-input bg-white px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring overflow-y-auto [&_h1]:text-xl [&_h1]:font-bold [&_h2]:text-lg [&_h2]:font-bold [&_ul]:list-disc [&_ul]:pl-5 [&_blockquote]:border-l-2 [&_blockquote]:border-slate-300 [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:text-slate-500 [&_a]:text-blue-600 [&_a]:underline [&_p]:my-2"
+                    onKeyUp={rememberCaret}
+                    onMouseUp={rememberCaret}
+                    className="prose prose-sm max-w-none w-full rounded-md border border-input bg-white px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring overflow-y-auto [&_h1]:text-xl [&_h1]:font-bold [&_h2]:text-lg [&_h2]:font-bold [&_ul]:list-disc [&_ul]:pl-5 [&_blockquote]:border-l-2 [&_blockquote]:border-slate-300 [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:text-slate-500 [&_a]:text-blue-600 [&_a]:underline [&_p]:my-2 [&_img]:my-3 [&_img]:max-h-80 [&_img]:rounded-lg"
                     style={{ minHeight }}
                 />
             </div>

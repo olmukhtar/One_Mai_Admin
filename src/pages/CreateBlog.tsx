@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -35,10 +35,35 @@ export default function CreateBlog() {
     const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
     // Which section an "image" pick applies to: an existing image section's
     // index to replace it, or "new" to append a fresh image section.
-    const [imageTarget, setImageTarget] = useState<number | "new" | null>(null);
+    const [imageTarget, setImageTarget] = useState<number | "new" | "inline" | null>(null);
 
     const handleSelectFeaturedImage = (item: MediaItem) => {
         setFormData((prev) => ({ ...prev, featuredImageUrl: resolveMediaUrl(item.fileUrl) }));
+    };
+
+    // Resolves the promise RichTextEditor is awaiting while the dialog is
+    // open, so an inserted image lands at the caret instead of at the end.
+    const inlineImageResolver = useRef<((url: string | null) => void) | null>(null);
+
+    const pickInlineImage = () =>
+        new Promise<string | null>((resolve) => {
+            inlineImageResolver.current = resolve;
+            setImageTarget("inline");
+            setMediaPickerOpen(true);
+        });
+
+    const handleSelectInlineImage = (item: MediaItem) => {
+        inlineImageResolver.current?.(resolveMediaUrl(item.fileUrl));
+        inlineImageResolver.current = null;
+    };
+
+    const handleMediaPickerOpenChange = (open: boolean) => {
+        setMediaPickerOpen(open);
+        if (!open) {
+            // Dismissed without choosing — unblock the awaiting editor.
+            inlineImageResolver.current?.(null);
+            inlineImageResolver.current = null;
+        }
     };
 
     const handleSelectSectionImage = (item: MediaItem) => {
@@ -231,8 +256,14 @@ export default function CreateBlog() {
 
                             <MediaPickerDialog
                                 open={mediaPickerOpen}
-                                onOpenChange={setMediaPickerOpen}
-                                onSelect={imageTarget === null ? handleSelectFeaturedImage : handleSelectSectionImage}
+                                onOpenChange={handleMediaPickerOpenChange}
+                                onSelect={
+                                    imageTarget === null
+                                        ? handleSelectFeaturedImage
+                                        : imageTarget === "inline"
+                                          ? handleSelectInlineImage
+                                          : handleSelectSectionImage
+                                }
                                 selectedUrl={imageTarget === null ? formData.featuredImageUrl : undefined}
                             />
 
@@ -280,6 +311,7 @@ export default function CreateBlog() {
                                                 id={`create-block-${index}`}
                                                 value={section.content}
                                                 onChange={(v) => updateTextSection(index, v)}
+                                                onPickImage={pickInlineImage}
                                                 placeholder={`Enter text for section ${index + 1}...`}
                                             />
                                         )}
