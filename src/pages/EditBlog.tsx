@@ -33,6 +33,16 @@ interface BlogPost {
     updatedAt: string;
 }
 
+/** The backend validates `domain` as "com" | "eu" | "ng". Older posts were
+ *  saved with a leading dot (".com"), which now fails validation and leaves
+ *  the select with no matching option — so normalise on the way in. */
+const DOMAINS = ["com", "eu", "ng"] as const;
+
+const normalizeDomain = (value?: string): string => {
+    const stripped = String(value ?? "").replace(/^\./, "").toLowerCase();
+    return (DOMAINS as readonly string[]).includes(stripped) ? stripped : "com";
+};
+
 export default function EditBlog() {
     const { id } = useParams<{ id: string }>();
     const { toast } = useToast();
@@ -43,7 +53,7 @@ export default function EditBlog() {
 
     const [formData, setFormData] = useState({
         title: "",
-        domain: ".com",
+        domain: "com",
         featuredImageUrl: "",
         sections: contentToSections(""),
     });
@@ -64,7 +74,7 @@ export default function EditBlog() {
                 if (foundPost) {
                     setFormData({
                         title: foundPost.title,
-                        domain: foundPost.domain || ".com",
+                        domain: normalizeDomain(foundPost.domain),
                         featuredImageUrl: foundPost.image ? resolveMediaUrl(foundPost.image) : "",
                         sections: contentToSections(foundPost.content),
                     });
@@ -267,9 +277,9 @@ export default function EditBlog() {
                                             </div>
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value=".com">app.joinonemai.ng (Global)</SelectItem>
-                                            <SelectItem value=".ng">app.joinonemai.ng (Nigeria)</SelectItem>
-                                            <SelectItem value=".eu">app.joinonemai.eu (Europe)</SelectItem>
+                                            <SelectItem value="com">joinonemai.com (Global)</SelectItem>
+                                            <SelectItem value="ng">joinonemai.ng (Nigeria)</SelectItem>
+                                            <SelectItem value="eu">joinonemai.eu (Europe)</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>

@@ -19,6 +19,7 @@ import { StatusBadge } from "@/components/admin/StatusBadge";
 import { apiFetch } from "@/lib/api";
 import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/constants";
 import { excerptFromContent } from "@/lib/postContent";
+import { useConfirm } from "@/components/admin/ConfirmDialog";
 
 function resolveImageUrl(path?: string) {
   if (!path) return "";
@@ -39,6 +40,7 @@ interface BlogPost {
 }
 
 export default function BlogManagement() {
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [posts, setPosts] = useState<BlogPost[]>([]);
@@ -90,7 +92,12 @@ export default function BlogManagement() {
   }, [debouncedSearch]);
 
   const handleDeletePost = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this blog post?")) return;
+    const confirmed = await confirm({
+      title: "Delete this blog post?",
+      description: "This permanently removes the post from the website. It cannot be undone.",
+      confirmLabel: "Delete post",
+    });
+    if (!confirmed) return;
 
     try {
       setLoading(true);
@@ -349,6 +356,7 @@ export default function BlogManagement() {
           </DialogContent>
         </Dialog>
       </div>
+      {confirmDialog}
     </AdminLayout>
   );
 }

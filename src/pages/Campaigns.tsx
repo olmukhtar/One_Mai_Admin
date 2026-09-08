@@ -14,6 +14,7 @@ import { apiFetch } from "@/lib/api";
 import { API_BASE_URL } from "@/lib/constants";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useConfirm } from "@/components/admin/ConfirmDialog";
 
 type Campaign = {
   _id: string;
@@ -45,6 +46,7 @@ const affiliateName = (a: Campaign["affiliateId"]) =>
   typeof a === "string" ? a : [a?.firstName, a?.lastName].filter(Boolean).join(" ") || a?._id || "—";
 
 export default function Campaigns() {
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const { token } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -211,7 +213,12 @@ export default function Campaigns() {
   };
 
   const handleDelete = async (row: Campaign) => {
-    if (!window.confirm(`Delete "${row.name}"? This cannot be undone.`)) return;
+    const confirmed = await confirm({
+      title: "Delete this campaign?",
+      description: `"${row.name}" will be permanently removed. This cannot be undone.`,
+      confirmLabel: "Delete campaign",
+    });
+    if (!confirmed) return;
     setDeletingId(row._id);
     try {
       const r = await apiFetch(`${CAMPAIGNS_URL}/${row._id}`, { method: "DELETE" });
@@ -421,6 +428,7 @@ export default function Campaigns() {
           </div>
         )}
       </div>
+      {confirmDialog}
     </AdminLayout>
   );
 }

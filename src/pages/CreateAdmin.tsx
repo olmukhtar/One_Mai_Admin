@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiFetch } from "@/lib/api";
 import { API_BASE_URL } from "@/lib/constants";
 import { useAuth } from "@/contexts/AuthContext";
+import { useConfirm } from "@/components/admin/ConfirmDialog";
 
 type UserRole = "admin" | "account" | "front_desk" | "customer_support" | "marketing";
 
@@ -45,6 +46,7 @@ interface Role {
 }
 
 export default function CreateAdmin() {
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const { token, role: currentUserRole } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -192,7 +194,12 @@ export default function CreateAdmin() {
   }
 
   async function onDelete(admin: AdminUser) {
-    if (!confirm(`Permanently remove admin account for ${admin.name || admin.email}?`)) return;
+    const confirmed = await confirm({
+      title: "Remove this admin account?",
+      description: `${admin.name || admin.email} will permanently lose access to the admin portal.`,
+      confirmLabel: "Remove admin",
+    });
+    if (!confirmed) return;
 
     try {
       const res = await apiFetch(DELETE_ENDPOINT(admin._id), {
@@ -463,6 +470,7 @@ export default function CreateAdmin() {
           </DialogContent>
         </Dialog>
       </div>
+      {confirmDialog}
     </AdminLayout>
   );
 }

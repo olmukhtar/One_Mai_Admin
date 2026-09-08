@@ -27,7 +27,7 @@ export default function CreateBlog() {
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
         title: "",
-        domain: ".com",
+        domain: "com",
         featuredImageUrl: "",
         sections: [newTextSection()] as Section[],
     });
@@ -202,9 +202,9 @@ export default function CreateBlog() {
                                             </div>
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value=".com">app.joinonemai.ng (Global)</SelectItem>
-                                            <SelectItem value=".ng">app.joinonemai.ng (Nigeria)</SelectItem>
-                                            <SelectItem value=".eu">app.joinonemai.eu (Europe)</SelectItem>
+                                            <SelectItem value="com">joinonemai.com (Global)</SelectItem>
+                                            <SelectItem value="ng">joinonemai.ng (Nigeria)</SelectItem>
+                                            <SelectItem value="eu">joinonemai.eu (Europe)</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>

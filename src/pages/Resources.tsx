@@ -12,6 +12,7 @@ import { Calendar, X, Plus, Loader2, Upload, Trash2, Eye, FileText, Download } f
 import { apiFetch } from "@/lib/api";
 import { API_BASE_URL } from "@/lib/constants";
 import { useAuth } from "@/contexts/AuthContext";
+import { useConfirm } from "@/components/admin/ConfirmDialog";
 
 type Resource = {
   _id: string;
@@ -53,6 +54,7 @@ const getResourceUrl = (url?: string) => {
 };
 
 export default function Resources() {
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const { token } = useAuth();
   const navigate = useNavigate();
 
@@ -269,7 +271,12 @@ export default function Resources() {
   };
 
   const handleDeleteResource = async (resourceId: string) => {
-    if (!confirm("Are you sure you want to delete this resource?")) return;
+    const confirmed = await confirm({
+      title: "Delete this resource?",
+      description: "This cannot be undone.",
+      confirmLabel: "Delete resource",
+    });
+    if (!confirmed) return;
 
     try {
       const response = await apiFetch(`${DELETE_RESOURCE_URL}/${resourceId}`, {
@@ -730,6 +737,7 @@ export default function Resources() {
           </div>
         )}
       </div>
+      {confirmDialog}
     </AdminLayout>
   );
 }
