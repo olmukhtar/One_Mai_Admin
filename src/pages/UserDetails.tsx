@@ -28,6 +28,7 @@ import {
   Check,
   Activity,
   UserCheck,
+  Pencil,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -110,6 +111,8 @@ const BASE_URL = API_BASE_URL;
 const SHOW_URL = (id: string) => `${BASE_URL}/admin/users/${id}`;
 const APPROVE_AFFILIATE_URL = (id: string) => `${BASE_URL}/user/${id}/approve-affiliate`;
 const CHANGE_COMMISSION_URL = (id: string) => `${BASE_URL}/user/${id}/change-affiliate-commission`;
+// PATCH /api/admin/users/{userId} — partial update; we only send referralCode.
+const UPDATE_USER_URL = (id: string) => `${BASE_URL}/admin/users/${id}`;
 
 function fmtCurrency(n?: number) {
   if (n === undefined || n === null || Number.isNaN(n)) return "₦0";
@@ -162,6 +165,11 @@ export default function UserDetails() {
   const [newCommissionRate, setNewCommissionRate] = useState("10");
   const [updatingCommission, setUpdatingCommission] = useState(false);
   const [commissionError, setCommissionError] = useState<string | null>(null);
+
+  const [showReferralModal, setShowReferralModal] = useState(false);
+  const [newReferralCode, setNewReferralCode] = useState("");
+  const [updatingReferral, setUpdatingReferral] = useState(false);
+  const [referralError, setReferralError] = useState<string | null>(null);
 
   const { token, role } = useAuth();
 
@@ -258,6 +266,43 @@ export default function UserDetails() {
       setCommissionError(e.message);
     } finally {
       setUpdatingCommission(false);
+    }
+  };
+
+  const handleChangeReferralCode = async () => {
+    const code = newReferralCode.trim();
+    if (!code) return setReferralError("Enter a referral code.");
+
+    setUpdatingReferral(true);
+    setReferralError(null);
+    try {
+      const res = await apiFetch(UPDATE_USER_URL(id), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ referralCode: code }),
+      });
+      if (!res.ok) {
+        // Surface the server's reason (e.g. a code already in use) rather than
+        // a generic failure, since referral codes are unique per user.
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.message || "Failed to update referral code");
+      }
+
+      if (data) {
+        setData({
+          ...data,
+          user: { ...data.user, referralCode: code },
+        });
+      }
+      toast({
+        title: "Referral Code Updated",
+        description: `Referral code set to ${code}.`,
+      });
+      setShowReferralModal(false);
+    } catch (e: any) {
+      setReferralError(e.message);
+    } finally {
+      setUpdatingReferral(false);
     }
   };
 
@@ -496,6 +541,29 @@ export default function UserDetails() {
                     <span className="font-semibold text-foreground">
                       {u?.twoFactor ? "Enabled" : "Disabled"}
                     </span>
+                  </div>
+
+                  {/* Every user has a referral code, not just approved partners,
+                      so the editor lives here rather than in the affiliate card. */}
+                  <div className="flex justify-between items-center py-1.5 border-b border-border/40 gap-2">
+                    <span className="text-muted-foreground font-medium">Referral Code</span>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-mono font-bold text-foreground bg-background px-2 py-0.5 rounded border border-border/60 truncate">
+                        {u?.referralCode || "—"}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-2 rounded-lg text-[11px] border-brand/30 text-brand hover:bg-brand hover:text-white font-semibold shrink-0"
+                        onClick={() => {
+                          setNewReferralCode(u?.referralCode || "");
+                          setReferralError(null);
+                          setShowReferralModal(true);
+                        }}
+                      >
+                        <Pencil className="h-3 w-3 mr-1" /> Edit
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
@@ -782,6 +850,50 @@ export default function UserDetails() {
                   disabled={updatingCommission}
                 >
                   {updatingCommission ? <Loader2 className="animate-spin h-4 w-4" /> : "Save Rate"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+      {/* Referral Code Edit Modal */}
+      {showReferralModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <Card className="max-w-md w-full rounded-2xl border border-border shadow-2xl bg-card p-6">
+            <CardHeader className="border-b border-border/60 pb-3">
+              <CardTitle className="text-base font-bold">Change Referral Code</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-4 text-xs">
+              <p className="text-muted-foreground leading-relaxed">
+                Set a new referral code for {userName}. Codes are unique, so an
+                existing code will be rejected.
+              </p>
+              <div className="space-y-1.5">
+                <Label className="font-semibold">Referral Code</Label>
+                <Input
+                  value={newReferralCode}
+                  onChange={(e) => setNewReferralCode(e.target.value.toUpperCase())}
+                  className="h-10 rounded-xl font-mono uppercase"
+                  placeholder="e.g. VICK"
+                />
+              </div>
+              {referralError && <p className="text-xs text-rose-600 font-medium">{referralError}</p>}
+              <div className="flex justify-end gap-2 pt-2 border-t border-border/60">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowReferralModal(false)}
+                  className="rounded-xl text-xs"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  className="bg-brand hover:bg-brand-hover text-white rounded-xl text-xs font-semibold"
+                  onClick={handleChangeReferralCode}
+                  disabled={updatingReferral || !newReferralCode.trim() || newReferralCode.trim() === (u?.referralCode || "")}
+                >
+                  {updatingReferral ? <Loader2 className="animate-spin h-4 w-4" /> : "Save Code"}
                 </Button>
               </div>
             </CardContent>
