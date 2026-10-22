@@ -25,6 +25,7 @@ import {
   PanelLeftOpen,
   X,
   Image as ImageIcon,
+  Percent,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -107,6 +108,12 @@ const mainItems = [
     url: "/knowledge-base",
     icon: Book,
     roles: ["admin", "marketing"],
+  },
+  {
+    title: "Fee Engine",
+    url: "/fee-config",
+    icon: Percent,
+    roles: ["admin"],
   },
   {
     title: "Create Admin",

@@ -30,6 +30,7 @@ import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
+import FeeConfigPage from "./pages/FeeConfig";
 import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 
@@ -185,6 +186,14 @@ const App = () => (
               element={
                 <RequireAuth>
                   <Settings />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/fee-config"
+              element={
+                <RequireAuth>
+                  <FeeConfigPage />
                 </RequireAuth>
               }
             />
