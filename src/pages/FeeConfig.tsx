@@ -64,6 +64,9 @@ export default function FeeConfigPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // The endpoint has no version history, so when the schedule last changed is
+  // the only provenance available — worth showing rather than hiding.
+  const [updatedAt, setUpdatedAt] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -76,6 +79,7 @@ export default function FeeConfigPage() {
       const loadedTiers = Array.isArray(config?.tiers) ? config.tiers : null;
       if (!loadedTiers || !loadedTiers.length) throw new Error("No fee configuration returned");
       setCap(Number(config.cap) || 0);
+      setUpdatedAt(config.updatedAt || config.createdAt || null);
       setTiers(
         loadedTiers.map((tier: RawTier, index: number) => ({
           tier: Number(tier?.tier ?? index + 1),
@@ -88,6 +92,7 @@ export default function FeeConfigPage() {
     } catch (e) {
       // Keep the template on screen so the admin can still build a schedule,
       // but say plainly that these are not the live values.
+      setUpdatedAt(null);
       setLoadError(errorMessage(e, "Could not load the current fee configuration."));
     } finally {
       setLoading(false);
@@ -391,6 +396,9 @@ export default function FeeConfigPage() {
         </Card>
 
         <p className="text-xs text-muted-foreground">
+          {updatedAt
+            ? `Live schedule, last updated ${new Date(updatedAt).toLocaleString()}. `
+            : ""}
           Saving affects new circles only. A circle keeps the schedule it was created under for its
           whole life.
         </p>
