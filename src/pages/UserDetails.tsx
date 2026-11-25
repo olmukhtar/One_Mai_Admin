@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StatusBadge } from "@/components/admin/StatusBadge";
+import { FreezeBalanceCard } from "@/components/admin/FreezeBalanceCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -49,6 +50,7 @@ type User = {
   phoneNumber?: string;
   referralBonus?: number;
   payoutBalance?: number;
+  freezeBalance?: boolean;
   referralCount?: number;
   createdAt?: string;
   updatedAt?: string;
@@ -497,6 +499,17 @@ export default function UserDetails() {
             </div>
           </div>
         </Card>
+
+        {u?._id && (
+          <FreezeBalanceCard
+            key={u._id}
+            userId={u._id}
+            frozen={u.freezeBalance}
+            onChange={(freezeBalance) =>
+              setData((d) => (d ? { ...d, user: { ...d.user, freezeBalance } } : d))
+            }
+          />
+        )}
 
         {/* Main Content Layout */}
         <div className="grid gap-6 lg:grid-cols-3">
