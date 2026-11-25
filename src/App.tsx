@@ -15,7 +15,8 @@ import {
 import Dashboard from "./pages/Dashboard";
 import Users from "./pages/Users";
 import UserDetails from "./pages/UserDetails";
-import Affiliates from "./pages/Affiliates";
+import AffiliateApplications from "./pages/AffiliateApplications";
+import AffiliateApplicationDetail from "./pages/AffiliateApplicationDetail";
 import Support from "./pages/Support";
 import Transactions from "./pages/Transactions";
 import CircleManagement from "./pages/CircleManagement";
@@ -26,38 +27,35 @@ import CircleProgress from "./pages/reports/CircleProgress";
 import Groups from "./pages/Groups";
 import GroupDetails from "./pages/GroupDetails";
 import Login from "./pages/Login";
+import ResetPassword from "./pages/ResetPassword";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
+import FeeConfigPage from "./pages/FeeConfig";
+import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
-import PayoutRequests from "./pages/PayoutRequests";
+
 import CreateAdmin from "./pages/CreateAdmin";
+import Campaigns from "./pages/Campaigns";
 import Resources from "./pages/Resources";
 import BlogManagement from "./pages/BlogManagement";
+import MediaLibrary from "./pages/MediaLibrary";
 import KnowledgeBase from "./pages/KnowledgeBase";
 import CreateBlog from "./pages/CreateBlog";
 import EditBlog from "./pages/EditBlog";
+import Monify from "./pages/Monify";
+import Unauthorized from "./pages/Unauthorized";
+
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
-const AUTH_STORAGE_KEY = "admin_auth";
 const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
-
-function isAuthed() {
-  return (
-    !!localStorage.getItem(AUTH_STORAGE_KEY) ||
-    !!sessionStorage.getItem(AUTH_STORAGE_KEY)
-  );
-}
-
-function logout() {
-  localStorage.removeItem(AUTH_STORAGE_KEY);
-  sessionStorage.removeItem(AUTH_STORAGE_KEY);
-}
 
 // Hook to handle inactivity logout
 function useInactivityLogout() {
   const navigate = useNavigate();
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const location = useLocation();
+  const { isAuthenticated, logout } = useAuth();
 
   const resetTimer = () => {
     // Clear existing timeout
@@ -66,7 +64,7 @@ function useInactivityLogout() {
     }
 
     // Only set timeout if user is authenticated and not on login page
-    if (isAuthed() && location.pathname !== "/") {
+    if (isAuthenticated && location.pathname !== "/") {
       timeoutRef.current = setTimeout(() => {
         logout();
         navigate("/", { replace: true });
@@ -95,7 +93,7 @@ function useInactivityLogout() {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [location.pathname]);
+  }, [location.pathname, isAuthenticated]);
 }
 
 function InactivityMonitor({ children }: { children: React.ReactNode }) {
@@ -105,27 +103,50 @@ function InactivityMonitor({ children }: { children: React.ReactNode }) {
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const location = useLocation();
-  if (!isAuthed()) {
+  const { isAuthenticated, role } = useAuth();
+  if (!isAuthenticated) {
     return <Navigate to="/" replace state={{ from: location.pathname }} />;
   }
+
+  if (role === "customer_support" || role === "support") {
+    const path = location.pathname;
+    const isAllowed = 
+      path === "/users" || path.startsWith("/users/") ||
+      path === "/groups" || path.startsWith("/groups/") ||
+      path === "/support" || path.startsWith("/support/") ||
+      path === "/knowledge-base" || path.startsWith("/knowledge-base/") ||
+      path === "/profile" || path === "/settings" || path === "/notifications" || path === "/unauthorized";
+
+    if (!isAllowed) {
+      return <Navigate to="/users" replace />;
+    }
+  }
+
   return children;
 }
 
 function RootLogin() {
-  return isAuthed() ? <Navigate to="/dashboard" replace /> : <Login />;
+  const { isAuthenticated, role } = useAuth();
+  if (isAuthenticated) {
+    if (role === "customer_support" || role === "support") return <Navigate to="/users" replace />;
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <Login />;
 }
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <InactivityMonitor>
-          <Routes>
+  <AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <InactivityMonitor>
+            <Routes>
             {/* Root is LOGIN */}
             <Route path="/" element={<RootLogin />} />
             <Route path="/login" element={<RootLogin />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
             {/* Protected app routes */}
             <Route
@@ -169,10 +190,34 @@ const App = () => (
               }
             />
             <Route
-              path="/affiliates"
+              path="/fee-config"
               element={
                 <RequireAuth>
-                  <Affiliates />
+                  <FeeConfigPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/notifications"
+              element={
+                <RequireAuth>
+                  <Notifications />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/affiliate-applications"
+              element={
+                <RequireAuth>
+                  <AffiliateApplications />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/affiliate-applications/:id"
+              element={
+                <RequireAuth>
+                  <AffiliateApplicationDetail />
                 </RequireAuth>
               }
             />
@@ -209,6 +254,22 @@ const App = () => (
               }
             />
             <Route
+              path="/monify"
+              element={
+                <RequireAuth>
+                  <Monify />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/campaigns"
+              element={
+                <RequireAuth>
+                  <Campaigns />
+                </RequireAuth>
+              }
+            />
+            <Route
               path="/resources"
               element={
                 <RequireAuth>
@@ -225,6 +286,14 @@ const App = () => (
               }
             />
             <Route
+              path="/media"
+              element={
+                <RequireAuth>
+                  <MediaLibrary />
+                </RequireAuth>
+              }
+            />
+            <Route
               path="/blog/create"
               element={
                 <RequireAuth>
@@ -237,14 +306,6 @@ const App = () => (
               element={
                 <RequireAuth>
                   <EditBlog />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/payout-requests"
-              element={
-                <RequireAuth>
-                  <PayoutRequests />
                 </RequireAuth>
               }
             />
@@ -305,13 +366,16 @@ const App = () => (
               }
             />
 
+            <Route path="/unauthorized" element={<Unauthorized />} />
+
             {/* Catch-all */}
             <Route path="*" element={<NotFound />} />
-          </Routes>
-        </InactivityMonitor>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+            </Routes>
+          </InactivityMonitor>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </AuthProvider>
 );
 
 export default App;

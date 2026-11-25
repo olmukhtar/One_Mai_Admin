@@ -32,7 +32,7 @@ export async function apiFetch(url: string | URL, init?: RequestInit): Promise<R
 
     const response = await fetch(url, config);
 
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401) {
         // Clear auth state
         localStorage.removeItem(AUTH_STORAGE_KEY);
         sessionStorage.removeItem(AUTH_STORAGE_KEY);
